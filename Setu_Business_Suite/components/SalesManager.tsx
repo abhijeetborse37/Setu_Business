@@ -66,8 +66,8 @@ const SalesManager: React.FC<Props> = ({ products, customers, transactions, acti
           const product = products.find(p => p.id === value);
           if (product) {
             updated.price = product.price;
-            updated.cgstRate = 0;
-            updated.sgstRate = 0;
+            updated.cgstRate = product.cgstRate || ''; 
+            updated.sgstRate = product.sgstRate || '';
           }
         }
         return updated;
@@ -145,8 +145,13 @@ const SalesManager: React.FC<Props> = ({ products, customers, transactions, acti
       const taxAmount = cgstAmount + sgstAmount;
       const totalAmount = (qty * price) + taxAmount;
 
+      // Get product name from products array
+      const product = products.find(p => p.id === line.productId);
+      const productName = product?.name || 'Unknown Product';
+
       return {
         productId: line.productId,
+        productName: productName,
         quantity: qty,
         unitPrice: price,
         taxRate: tr,
@@ -607,7 +612,7 @@ const SalesManager: React.FC<Props> = ({ products, customers, transactions, acti
         )
       }
 
-      {showInvoice && <InvoiceModal transaction={showInvoice} company={activeCompany} onClose={() => setShowInvoice(null)} />}
+      {showInvoice && <InvoiceModal transaction={showInvoice} company={activeCompany} customer={customers.find(c => c.name === showInvoice.entityName) || null} onClose={() => setShowInvoice(null)} />}
     </div >
   );
 };

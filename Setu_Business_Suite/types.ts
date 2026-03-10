@@ -94,6 +94,8 @@ export interface Product {
   image?: string;
   unitPerPack?: number;
   hsnCode?: string;
+  sgstRate?: number;  // State GST rate as percentage
+  cgstRate?: number;  // Central GST rate as percentage
   customAttributes?: CustomAttribute[];
 }
 
