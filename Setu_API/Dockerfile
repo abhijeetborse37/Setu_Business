@@ -1,16 +1,17 @@
-# Use .NET runtime
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
 EXPOSE 8080
 
-# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
-COPY . .
-RUN dotnet restore
-RUN dotnet publish -c Release -o /app/publish
 
-# Final stage
+COPY ["Setu_API/Setu.Api.csproj", "Setu_API/"]
+RUN dotnet restore "Setu_API/Setu.Api.csproj"
+
+COPY . .
+WORKDIR "/src/Setu_API"
+RUN dotnet publish "Setu.Api.csproj" -c Release -o /app/publish
+
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
