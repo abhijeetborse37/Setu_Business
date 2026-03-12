@@ -249,7 +249,7 @@ const App: React.FC = () => {
                 Made with <i className="fas fa-heart text-red-500 mx-1.5"></i> in India <span className="ml-2">🇮🇳</span>
               </p>
               <p className="text-[8px] text-slate-300 font-bold uppercase tracking-widest mt-2">
-                © {new Date().getFullYear()} Setu Business Suite • Powered by .NET Core &amp; Postgres
+                © {new Date().getFullYear()} Setu Business Suite • Powered by Abhibaba Pvt. Ltd.
               </p>
             </footer>
           </main>
