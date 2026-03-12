@@ -141,6 +141,13 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Setu API v1");
+    c.RoutePrefix = "swagger";
+});
+
 // app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
@@ -149,5 +156,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapGet("/", () => "SETU ERP API Running...");
 
 app.Run();
