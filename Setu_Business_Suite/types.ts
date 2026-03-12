@@ -43,6 +43,8 @@ export interface User {
   email: string;
   role: UserRole;
   avatar?: string;
+  contactNo?: string;
+  allowedTabsPattern?: string; // "*" = all, comma-separated list e.g. "dashboard,sales"
   token?: string;
   isSubscriptionActive?: boolean;
   subscriptionStatus?: string;
@@ -70,7 +72,9 @@ export interface Company {
   gstNumber?: string;
   licenseNumber: string;
   bankAccount: string;
+  bankName?: string;
   ifscCode?: string;
+  branchName?: string;
   industry: string;
   employees: number;
   revenue: number;
@@ -121,6 +125,7 @@ export interface Customer {
 export interface TransactionItem {
   productId: string;
   productName: string;
+  hsnCode?: string;
   quantity: number;
   unitPrice: number;
   taxRate: number;
@@ -144,6 +149,7 @@ export interface Transaction {
   roundOff?: number;
   date: string;
   entityName: string; // Customer for Sale, Supplier for Purchase
+  entityGstNumber?: string; // GST/PAN number of the customer or supplier
   invoiceNumber: string;
 }
 

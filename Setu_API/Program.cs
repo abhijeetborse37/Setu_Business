@@ -82,6 +82,51 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// ===== AUTO-SEED SUPER ADMIN ON FIRST RUN =====
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+    try
+    {
+        db.Database.Migrate(); // Ensure migrations are applied
+
+        var hasAdmin = db.Users.Any(u => u.Role == Setu.Api.Models.UserRole.Admin);
+        if (!hasAdmin)
+        {
+            var adminPassword = "Admin@123";
+            var adminUser = new Setu.Api.Models.User
+            {
+                Id = Guid.NewGuid(),
+                Name = "Super Admin",
+                Email = "admin@setu.in",
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(adminPassword),
+                Role = Setu.Api.Models.UserRole.Admin,
+                ContactNo = "9999999999",
+                AllowedTabsPattern = "*",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            db.Users.Add(adminUser);
+            db.SaveChanges();
+
+            logger.LogInformation("==============================================");
+            logger.LogInformation("  SUPER ADMIN SEEDED SUCCESSFULLY!");
+            logger.LogInformation("  Email   : admin@setu.in");
+            logger.LogInformation("  Password: Admin@123");
+            logger.LogInformation("  CHANGE THIS PASSWORD AFTER FIRST LOGIN!");
+            logger.LogInformation("==============================================");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error during database seeding.");
+    }
+}
+// ===== END SEEDING =====
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

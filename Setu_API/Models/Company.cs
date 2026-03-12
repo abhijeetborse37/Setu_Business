@@ -35,7 +35,9 @@ namespace Setu.Api.Models
         public string? GstNumber { get; set; }
         public string LicenseNumber { get; set; } = string.Empty;
         public string BankAccount { get; set; } = string.Empty;
+        public string? BankName { get; set; }
         public string? IfscCode { get; set; }
+        public string? BranchName { get; set; }
         public string Industry { get; set; } = string.Empty;
         
         public int Employees { get; set; }

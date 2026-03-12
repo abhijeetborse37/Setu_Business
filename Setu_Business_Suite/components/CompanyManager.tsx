@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Company, BusinessType, Product, Transaction, User } from '../types';
+import { Company, BusinessType, Product, Transaction, User, UserRole } from '../types';
 import { companyService } from '../services/api';
 
 interface Props {
@@ -27,6 +27,8 @@ const CompanyManager: React.FC<Props> = ({ companies, activeId, setActiveId, pro
   const [isBusy, setIsBusy] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const isAdmin = currentUser.role === UserRole.ADMIN;
+
   const initialFormState = {
     name: '',
     address: '',
@@ -40,6 +42,8 @@ const CompanyManager: React.FC<Props> = ({ companies, activeId, setActiveId, pro
     licenseNumber: '',
     bankAccount: '',
     ifscCode: '',
+    bankName: '',
+    branchName: '',
     industry: '',
     employees: 0,
     revenue: 0,
@@ -66,6 +70,13 @@ const CompanyManager: React.FC<Props> = ({ companies, activeId, setActiveId, pro
 
   const handleEdit = (e: React.MouseEvent, company: Company) => {
     e.stopPropagation(); e.preventDefault();
+    
+    // Only Admin can edit any company; Customers can only edit their own
+    if (!isAdmin && company.userId !== currentUser.id) {
+      alert('Access Denied: You can only edit your own company details.');
+      return;
+    }
+    
     setEditingCompanyId(company.id);
     // Sanitize data for form
     setFormData({
@@ -77,6 +88,13 @@ const CompanyManager: React.FC<Props> = ({ companies, activeId, setActiveId, pro
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation(); e.preventDefault();
+    
+    // Only Admin can delete
+    if (!isAdmin) {
+      alert('Access Denied: Only super admin can delete companies.');
+      return;
+    }
+    
     if (products.some(p => p.companyId === id)) {
       alert(`Cannot delete entity: There are ${products.filter(p => p.companyId === id).length} products linked to this business.`);
       return;
@@ -142,9 +160,11 @@ const CompanyManager: React.FC<Props> = ({ companies, activeId, setActiveId, pro
           <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Corporate Portfolio</h2>
           <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Global Master Data Management</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-500/30 transition-all flex items-center text-[10px] uppercase tracking-[0.2em]">
-          <i className="fas fa-plus mr-2"></i> Register New Business
-        </button>
+        {isAdmin && (
+          <button onClick={() => setShowForm(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-500/30 transition-all flex items-center text-[10px] uppercase tracking-[0.2em]">
+            <i className="fas fa-plus mr-2"></i> Register New Business
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -155,8 +175,16 @@ const CompanyManager: React.FC<Props> = ({ companies, activeId, setActiveId, pro
                 <i className="fas fa-building text-2xl"></i>
               </div>
               <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={(e) => handleEdit(e, company)} className="p-2 text-slate-400 hover:text-blue-600 bg-white rounded-xl shadow-sm"><i className="fas fa-edit text-xs"></i></button>
-                <button onClick={(e) => handleDelete(e, company.id)} className="p-2 text-slate-400 hover:text-red-600 bg-white rounded-xl shadow-sm"><i className="fas fa-trash text-xs"></i></button>
+                {(isAdmin || company.userId === currentUser.id) && (
+                  <button onClick={(e) => handleEdit(e, company)} className="p-2 text-slate-400 hover:text-blue-600 bg-white rounded-xl shadow-sm" title={isAdmin ? "Edit company" : "Edit your company"}>
+                    <i className="fas fa-edit text-xs"></i>
+                  </button>
+                )}
+                {isAdmin && (
+                  <button onClick={(e) => handleDelete(e, company.id)} className="p-2 text-slate-400 hover:text-red-600 bg-white rounded-xl shadow-sm" title="Delete company">
+                    <i className="fas fa-trash text-xs"></i>
+                  </button>
+                )}
               </div>
             </div>
             <h3 className="text-lg font-black text-slate-900 truncate uppercase tracking-tight mb-2">{company.name}</h3>
@@ -293,6 +321,16 @@ const CompanyManager: React.FC<Props> = ({ companies, activeId, setActiveId, pro
                     <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">IFSC / SWIFT</label>
                     <input className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3.5 text-sm font-mono focus:border-blue-500 outline-none uppercase"
                       value={formData.ifscCode} onChange={e => setFormData({ ...formData, ifscCode: e.target.value.toUpperCase() })} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Bank Name</label>
+                    <input className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:border-blue-500 outline-none"
+                      value={formData.bankName} onChange={e => setFormData({ ...formData, bankName: e.target.value })} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Branch Name</label>
+                    <input className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3.5 text-sm focus:border-blue-500 outline-none"
+                      value={formData.branchName} onChange={e => setFormData({ ...formData, branchName: e.target.value })} />
                   </div>
                   <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 ml-1">Staff Count</label>

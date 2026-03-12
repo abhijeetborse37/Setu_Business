@@ -13,12 +13,12 @@ import InventoryManager from './components/InventoryManager';
 import SalesManager from './components/SalesManager';
 import AdminPanel from './components/AdminPanel';
 import Login from './components/Login';
-import SubscriptionSelection from './components/SubscriptionSelection';
+import EditProfile from './components/EditProfile';
+import AccessDenied from './components/AccessDenied';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Import Backend services and utilities
-import { companyService, productService, transactionService, authService, customerService } from './services/api';
-import { formatDisplayDate } from './utils';
+import { companyService, productService, transactionService, customerService } from './services/api';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -41,14 +41,11 @@ const App: React.FC = () => {
 
   const fetchData = async () => {
     if (!currentUser) return;
-    // Allow fetching if Admin or if they have any subscription status (including Pending)
-    // if (currentUser.role !== UserRole.ADMIN && currentUser.subscriptionStatus === 'None') return;
     setIsSyncing(true);
     const normalize = (obj: any) => {
       if (!obj || typeof obj !== 'object') return obj;
       const newObj: any = {};
       for (const key in obj) {
-        // Map common property names to their expected lowercase versions
         const normalizedKey = key.toLowerCase() === 'id' ? 'id' : (key.charAt(0).toLowerCase() + key.slice(1));
         newObj[normalizedKey] = obj[key];
       }
@@ -67,42 +64,23 @@ const App: React.FC = () => {
       }
 
       if (currentActiveId) {
-        console.log("App: Fetching data for Company ID:", currentActiveId);
-
-        // Fetch data with individual error handling so one failure doesn't block others
         const fetchResults = await Promise.all([
-          productService.getByCompany(currentActiveId).catch(err => { console.error("App: Product fetch failed:", err); return { data: [] }; }),
-          transactionService.getByCompany(currentActiveId).catch(err => { console.error("App: Transaction fetch failed:", err); return { data: [] }; }),
-          customerService.getAll().catch(err => { console.error("App: Customer fetch failed:", err); return { data: [] }; })
+          productService.getByCompany(currentActiveId).catch(err => { console.error('Product fetch failed:', err); return { data: [] }; }),
+          transactionService.getByCompany(currentActiveId).catch(err => { console.error('Transaction fetch failed:', err); return { data: [] }; }),
+          customerService.getAll().catch(err => { console.error('Customer fetch failed:', err); return { data: [] }; }),
         ]);
-
         const [productRes, transactionRes, customerRes] = fetchResults;
-
-        console.log("App: Raw Product Data:", productRes.data);
-        console.log("App: Raw Transaction Data:", transactionRes.data);
-
-        const normalizedProducts = (productRes.data || []).map(normalize);
-        const normalizedTransactions = (transactionRes.data || []).map(normalize);
-        const normalizedCustomers = (customerRes.data || []).map(normalize);
-
-        setProducts(normalizedProducts);
-        setTransactions(normalizedTransactions);
-        setCustomers(normalizedCustomers);
-
-        if (normalizedProducts.length > 0) {
-          console.info(`✓ Successfully loaded ${normalizedProducts.length} products for company ${currentActiveId}`);
-        }
-      } else {
-        console.warn("App: No active company ID to fetch products for.");
+        setProducts((productRes.data || []).map(normalize));
+        setTransactions((transactionRes.data || []).map(normalize));
+        setCustomers((customerRes.data || []).map(normalize));
       }
     } catch (err: any) {
-      console.error("App: Error fetching data:", err.response?.data || err.message);
+      console.error('App: Error fetching data:', err.response?.data || err.message);
     } finally {
       setIsSyncing(false);
     }
   };
 
-  // 1. Data Fetching
   useEffect(() => {
     fetchData();
   }, [currentUser, activeCompanyId]);
@@ -118,6 +96,8 @@ const App: React.FC = () => {
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     localStorage.setItem('setu_user', JSON.stringify(user));
+    // Admins land on admin panel; customers land on dashboard
+    setActiveTab(user.role === UserRole.ADMIN ? 'admin' : 'dashboard');
   };
 
   const handleLogout = () => {
@@ -126,26 +106,42 @@ const App: React.FC = () => {
     setActiveTab('dashboard');
   };
 
+  const handleProfileUpdated = (updatedUser: User) => {
+    setCurrentUser(updatedUser);
+    localStorage.setItem('setu_user', JSON.stringify(updatedUser));
+  };
+
   const activeCompany = useMemo(() =>
     companies.find(c => c.id === activeCompanyId) || null,
     [companies, activeCompanyId]);
 
+  const isAdmin = currentUser?.role === UserRole.ADMIN;
+
   const navigateTo = (tab: string) => {
-    /*
-    if (currentUser?.role === UserRole.CUSTOMER) {
-      // Allow navigation if Active OR if they are Pending (to see their profile/dashboard)
-      if (!currentUser?.isSubscriptionActive && currentUser.subscriptionStatus !== 'Pending') {
-        alert("Subscription Required: Please finalize your subscription to access this feature.");
+    // Admin can only access: admin, users, profile
+    if (isAdmin) {
+      if (!['admin', 'users', 'profile'].includes(tab)) {
+        alert('Unauthorized: Admins can only access Admin Panel, Access Control, and My Profile.');
         return;
       }
+    } else {
+      // Customer cannot access admin or users tabs
+      if (tab === 'admin' || tab === 'users') {
+        alert('Unauthorized: Admin access only.');
+        return;
+      }
+      // For customers: check allowedTabsPattern
+      if (tab !== 'profile') {
+        const pattern = currentUser?.allowedTabsPattern ?? '*';
+        if (pattern !== '*') {
+          const allowed = pattern.split(',').map(s => s.trim());
+          if (!allowed.includes(tab)) {
+            alert('Access restricted: Your admin has not granted access to this section.');
+            return;
+          }
+        }
+      }
     }
-    */
-
-    if (tab === 'admin' && currentUser?.role !== UserRole.ADMIN) {
-      alert("Unauthorized: Admin access only.");
-      return;
-    }
-
     setActiveTab(tab);
     setIsSidebarOpen(false);
   };
@@ -154,70 +150,13 @@ const App: React.FC = () => {
     return <Login onLogin={handleLogin} />;
   }
 
-  /*
-  // Handle Subscription Scenarios for Customers
-  if (currentUser.role === UserRole.CUSTOMER) {
-    if (currentUser.subscriptionStatus === 'None' || currentUser.subscriptionStatus === 'Rejected') {
-      return (
-        <div className="min-h-screen bg-slate-50">
-          <div className="max-w-7xl mx-auto p-4 md:p-8">
-            <div className="flex justify-between items-center mb-10">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white"><i className="fas fa-bridge-water"></i></div>
-                <span className="font-black text-xl tracking-tighter">Setu</span>
-              </div>
-              <button onClick={handleLogout} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-500">Logout</button>
-            </div>
-            {currentUser.subscriptionStatus === 'Rejected' && (
-              <div className="mb-10 bg-red-50 border border-red-100 p-6 rounded-[2rem] text-center">
-                <p className="text-red-600 font-bold">Your previous subscription request was rejected. Please select a new plan.</p>
-              </div>
-            )}
-            <SubscriptionSelection currentUser={currentUser} onPlanRequested={() => {
-              const updatedUser = { ...currentUser, subscriptionStatus: 'Pending' };
-              setCurrentUser(updatedUser);
-              localStorage.setItem('setu_user', JSON.stringify(updatedUser));
-              setActiveTab('dashboard');
-            }} />
-          </div>
-        </div>
-      );
-    }
-  }
-  */
-  /*
-  // Check for expiry
-  if (currentUser.subscriptionStatus === 'Active' && !currentUser.isSubscriptionActive) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-        <div className="max-w-md w-full bg-white rounded-[3rem] p-12 text-center shadow-xl shadow-slate-200/50 border border-slate-100">
-          <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-8 text-3xl">
-            <i className="fas fa-calendar-times"></i>
-          </div>
-          <h2 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Subscription Expired</h2>
-          <p className="text-slate-500 font-medium mb-2">
-            Your subscription expired on {currentUser.subscriptionEndDate ? formatDisplayDate(currentUser.subscriptionEndDate) : 'recently'}.
-          </p>
-          <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-10">Please renew to continue.</p>
-          <div className="space-y-4">
-            <button onClick={() => setCurrentUser({ ...currentUser, subscriptionStatus: 'None' })} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-slate-200">
-              Renew Now
-            </button>
-            <button onClick={handleLogout} className="w-full py-4 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-slate-600">
-              Log Out
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  */
-
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
+        if (isAdmin) return <AccessDenied />;
         return <Dashboard company={activeCompany} products={products} customers={customers} transactions={transactions} onNavigate={navigateTo} />;
       case 'companies':
+        if (isAdmin) return <AccessDenied />;
         return (
           <CompanyManager
             companies={companies}
@@ -230,20 +169,28 @@ const App: React.FC = () => {
           />
         );
       case 'inventory':
+        if (isAdmin) return <AccessDenied />;
         return <InventoryManager products={products} transactions={transactions} activeCompany={activeCompany} currentUser={currentUser} onDataChange={fetchData} />;
       case 'sales':
+        if (isAdmin) return <AccessDenied />;
         return <SalesManager products={products} customers={customers} transactions={transactions} activeCompany={activeCompany} currentUser={currentUser} onDataChange={fetchData} />;
       case 'products':
-        return <ProductManager products={products} onDataChange={fetchData} activeCompanyId={activeCompanyId} currencySymbol={activeCompany?.currencySymbol || '$'} currentUser={currentUser!} />;
+        if (isAdmin) return <AccessDenied />;
+        return <ProductManager products={products} onDataChange={fetchData} activeCompanyId={activeCompanyId} currencySymbol={activeCompany?.currencySymbol || '₹'} currentUser={currentUser!} />;
       case 'customers':
-        return <CustomerManager customers={customers} onDataChange={fetchData} activeCompanyId={activeCompanyId} currencySymbol={activeCompany?.currencySymbol || '$'} currentUser={currentUser!} />;
+        if (isAdmin) return <AccessDenied />;
+        return <CustomerManager customers={customers} onDataChange={fetchData} activeCompanyId={activeCompanyId} currencySymbol={activeCompany?.currencySymbol || '₹'} currentUser={currentUser!} />;
       case 'users':
-        return <UserManager currentUser={currentUser} />;
+        return isAdmin ? <UserManager currentUser={currentUser} /> : <AccessDenied />;
       case 'admin':
-        return <AdminPanel />;
+        return isAdmin ? <AdminPanel /> : <AccessDenied />;
       case 'analytics':
+        if (isAdmin) return <AccessDenied />;
         return <Analytics company={activeCompany} products={products} transactions={transactions} />;
+      case 'profile':
+        return <EditProfile currentUser={currentUser} onProfileUpdated={handleProfileUpdated} />;
       default:
+        if (isAdmin) return <AdminPanel />;
         return <Dashboard company={activeCompany} products={products} customers={customers} transactions={transactions} onNavigate={navigateTo} />;
     }
   };
@@ -280,24 +227,15 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {/* 
-          {currentUser.subscriptionStatus === 'Pending' && (
-            <div className="m-4 mb-0 bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center justify-between text-amber-700 font-bold text-xs animate-in slide-in-from-top-2">
-              <div className="flex items-center">
-                <i className="fas fa-hourglass-half mr-3 animate-pulse"></i>
-                Subscription Pending Approval: Some features may be restricted until an admin approves your request.
-              </div>
-            </div>
-          )}
-          */}
-
           {currentUser.warningMessage && (
             <div className="m-4 mb-0 bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center justify-between text-amber-700 font-bold text-xs animate-in slide-in-from-top-2">
               <div className="flex items-center">
                 <i className="fas fa-exclamation-triangle mr-3"></i>
                 {currentUser.warningMessage}
               </div>
-              <button onClick={() => setCurrentUser({ ...currentUser, warningMessage: undefined })} className="text-amber-400 hover:text-amber-600"><i className="fas fa-times"></i></button>
+              <button onClick={() => setCurrentUser({ ...currentUser, warningMessage: undefined })} className="text-amber-400 hover:text-amber-600">
+                <i className="fas fa-times"></i>
+              </button>
             </div>
           )}
 
@@ -311,7 +249,7 @@ const App: React.FC = () => {
                 Made with <i className="fas fa-heart text-red-500 mx-1.5"></i> in India <span className="ml-2">🇮🇳</span>
               </p>
               <p className="text-[8px] text-slate-300 font-bold uppercase tracking-widest mt-2">
-                © {new Date().getFullYear()} Setu Business Suite • Powered by .NET Core & Postgres
+                © {new Date().getFullYear()} Setu Business Suite • Powered by .NET Core &amp; Postgres
               </p>
             </footer>
           </main>

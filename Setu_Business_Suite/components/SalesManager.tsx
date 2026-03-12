@@ -152,6 +152,7 @@ const SalesManager: React.FC<Props> = ({ products, customers, transactions, acti
       return {
         productId: line.productId,
         productName: productName,
+        hsnCode: product?.hsnCode,
         quantity: qty,
         unitPrice: price,
         taxRate: tr,
@@ -177,6 +178,7 @@ const SalesManager: React.FC<Props> = ({ products, customers, transactions, acti
         roundOff: currentSummary.roundOff,
         date: currentSaleDate,
         entityName: customer.name,
+        entityGstNumber: customer.gstPanId || '',
         companyId: activeCompany?.id || '',
         userId: currentUser.id
       };

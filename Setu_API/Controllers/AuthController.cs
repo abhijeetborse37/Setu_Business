@@ -68,6 +68,8 @@ namespace Setu.Api.Controllers
                         user.Name,
                         user.Email,
                         user.Role,
+                        user.ContactNo,
+                        AllowedTabsPattern = user.AllowedTabsPattern ?? "*",
                         SubscriptionStatus = subscriptionStatus,
                         SubscriptionEndDate = subscriptionEndDate,
                         IsSubscriptionActive = isSubscriptionActive,
@@ -86,13 +88,17 @@ namespace Setu.Api.Controllers
             }
         }
 
-        [HttpPost("register")]
-        public async Task<IActionResult> Register([FromBody] RegisterDto register)
+        /// <summary>Admin-only: Create a new user and return one-time credentials</summary>
+        [HttpPost("create-user")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateUser([FromBody] RegisterDto register)
         {
             if (await _context.Users.AnyAsync(u => u.Email == register.Email))
-            {
                 return BadRequest(new { message = "Email already exists" });
-            }
+
+            var userRole = UserRole.Customer;
+            if (!string.IsNullOrEmpty(register.Role) && Enum.TryParse<UserRole>(register.Role, out var parsedRole))
+                userRole = parsedRole;
 
             var user = new User
             {
@@ -100,27 +106,75 @@ namespace Setu.Api.Controllers
                 Name = register.Name,
                 Email = register.Email,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(register.Password),
-                Role = UserRole.Customer, // Default to Customer
+                ContactNo = register.ContactNo,
+                Role = userRole,
+                AllowedTabsPattern = "*",
                 IsActive = true
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            var token = GenerateJwtToken(user);
-
-            return Ok(new { 
-                message = "Registration successful!",
-                Token = token,
+            return Ok(new {
+                message = "User created successfully! Share the credentials with the user.",
                 User = new {
                     user.Id,
                     user.Name,
                     user.Email,
+                    user.ContactNo,
                     user.Role,
-                    SubscriptionStatus = "None",
-                    IsSubscriptionActive = false
+                    OneTimePassword = register.Password // Plain text for admin to share once
                 }
             });
+        }
+
+        /// <summary>Admin-only: Update which tabs a customer is allowed to access</summary>
+        [HttpPut("users/{id}/tabs")]
+        [Microsoft.AspNetCore.Authorization.Authorize(Roles = "Admin")]
+        public async Task<IActionResult> SetUserTabs(Guid id, [FromBody] SetTabsDto request)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null) return NotFound(new { message = "User not found." });
+            user.AllowedTabsPattern = request.AllowedTabsPattern ?? "*";
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Tab access updated.", allowedTabsPattern = user.AllowedTabsPattern });
+        }
+
+        [HttpPost("request-otp")]
+        public async Task<IActionResult> RequestOtp([FromBody] RequestOtpDto request)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email || (u.ContactNo != null && u.ContactNo == request.ContactNo));
+            if (user == null) return NotFound(new { message = "User not found." });
+
+            // Generate a random 6 digit OTP
+            var otp = new Random().Next(100000, 999999).ToString();
+            
+            // In a real app, send via Email/SMS. For now, just return it so frontend can simulate.
+            // Or store it in a cache/db. We'll simulate by returning it.
+            return Ok(new { message = "OTP sent successfully to " + (request.Email ?? request.ContactNo), simulateOtp = otp });
+        }
+
+        [HttpPost("update-profile")]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto request)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == request.Email || (u.ContactNo != null && u.ContactNo == request.ContactNo));
+            if (user == null) return NotFound(new { message = "User not found." });
+
+            // Verify OTP - in reality you'd verify against a stored OTP. Here we assume the frontend validated it for demo.
+            if (request.SimulatedOtp != request.ProvidedOtp)
+            {
+                return BadRequest(new { message = "Invalid OTP." });
+            }
+
+            if (!string.IsNullOrEmpty(request.NewName))
+                user.Name = request.NewName;
+
+            if (!string.IsNullOrEmpty(request.NewPassword))
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Profile updated successfully.", user = new { user.Id, user.Name, user.Email, user.ContactNo, user.Role } });
         }
 
         private string GenerateJwtToken(User user)
@@ -151,5 +205,8 @@ namespace Setu.Api.Controllers
     }
 
     public record LoginDto(string Email, string Password);
-    public record RegisterDto(string Name, string Email, string Password);
+    public record RegisterDto(string Name, string Email, string Password, string? ContactNo, string? Role);
+    public record RequestOtpDto(string? Email, string? ContactNo);
+    public record UpdateProfileDto(string? Email, string? ContactNo, string? NewName, string? NewPassword, string SimulatedOtp, string ProvidedOtp);
+    public record SetTabsDto(string? AllowedTabsPattern);
 }

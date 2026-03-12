@@ -26,6 +26,10 @@ namespace Setu.Api.Models
         public UserRole Role { get; set; } = UserRole.Customer;
         
         public string? Avatar { get; set; }
+        public string? ContactNo { get; set; }
+        
+        public string? AllowedTabsPattern { get; set; } = "*";
+        
         public bool IsActive { get; set; } = true;
 
         public Subscription? Subscription { get; set; }

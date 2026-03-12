@@ -45,11 +45,17 @@ namespace Setu.Api.Controllers
                 item.Id = Guid.NewGuid();
                 item.TransactionId = transaction.Id;
                 
-                // Fetch product name if missing
-                if (string.IsNullOrEmpty(item.ProductName))
+                // Fetch product name and HSN Code if missing
+                if (string.IsNullOrEmpty(item.ProductName) || string.IsNullOrEmpty(item.HsnCode))
                 {
                     var product = await _context.Products.FindAsync(item.ProductId);
-                    if (product != null) item.ProductName = product.Name;
+                    if (product != null)
+                    {
+                        if (string.IsNullOrEmpty(item.ProductName))
+                            item.ProductName = product.Name;
+                        if (string.IsNullOrEmpty(item.HsnCode))
+                            item.HsnCode = product.HsnCode;
+                    }
                 }
             }
 
@@ -129,10 +135,16 @@ namespace Setu.Api.Controllers
                     item.Id = Guid.NewGuid();
                     item.TransactionId = id;
                     
-                    if (string.IsNullOrEmpty(item.ProductName))
+                    if (string.IsNullOrEmpty(item.ProductName) || string.IsNullOrEmpty(item.HsnCode))
                     {
                         var product = await _context.Products.FindAsync(item.ProductId);
-                        if (product != null) item.ProductName = product.Name;
+                        if (product != null)
+                        {
+                            if (string.IsNullOrEmpty(item.ProductName))
+                                item.ProductName = product.Name;
+                            if (string.IsNullOrEmpty(item.HsnCode))
+                                item.HsnCode = product.HsnCode;
+                        }
                     }
                     
                     _context.TransactionItems.Add(item);

@@ -68,22 +68,26 @@ namespace Setu.Api.Models
     public class Transaction
     {
         public Guid Id { get; set; }
-        
+
         public Guid UserId { get; set; }
-        
+
         public Guid CompanyId { get; set; }
         [JsonIgnore]
         public Company? Company { get; set; }
 
         public string Type { get; set; } = "SALE"; // PURCHASE or SALE
-        
+
         public ICollection<TransactionItem> Items { get; set; } = new List<TransactionItem>();
-        
+
         public decimal TotalAmount { get; set; }
         public decimal TotalTax { get; set; }
-        
+        public decimal CgstTotal { get; set; } = 0;
+        public decimal SgstTotal { get; set; } = 0;
+        public decimal RoundOff { get; set; } = 0;
+
         public DateTime Date { get; set; } = DateTime.UtcNow;
         public string EntityName { get; set; } = string.Empty;
+        public string? EntityGstNumber { get; set; }
         public string InvoiceNumber { get; set; } = string.Empty;
     }
 
@@ -97,11 +101,18 @@ namespace Setu.Api.Models
 
         public Guid ProductId { get; set; }
         public string ProductName { get; set; } = string.Empty;
+        public string? HsnCode { get; set; }
         
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal TaxRate { get; set; }
         public decimal TaxAmount { get; set; }
         public decimal TotalAmount { get; set; }
+        
+        // GST Fields
+        public decimal CgstRate { get; set; } = 0;
+        public decimal SgstRate { get; set; } = 0;
+        public decimal CgstAmount { get; set; } = 0;
+        public decimal SgstAmount { get; set; } = 0;
     }
 }

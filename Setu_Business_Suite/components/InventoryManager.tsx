@@ -33,6 +33,7 @@ const InventoryManager: React.FC<Props> = ({ products, transactions, activeCompa
   const [formData, setFormData] = useState({
     productId: '',
     supplierName: '',
+    entityGstNumber: '',
     quantity: '' as string | number,
     unitCost: '' as string | number,
     cgstRate: '' as string | number,
@@ -70,6 +71,7 @@ const InventoryManager: React.FC<Props> = ({ products, transactions, activeCompa
     setFormData({
       productId: item.productId,
       supplierName: transaction.entityName,
+      entityGstNumber: transaction.entityGstNumber || '',
       quantity: item.quantity,
       unitCost: item.unitPrice,
       cgstRate: item.cgstRate || (item.taxRate ? item.taxRate / 2 : ''),
@@ -114,6 +116,8 @@ const InventoryManager: React.FC<Props> = ({ products, transactions, activeCompa
 
     const item: any = {
       productId: formData.productId,
+      productName: product.name,
+      hsnCode: product.hsnCode,
       quantity: qty,
       unitPrice: cost,
       taxRate: taxRateVal,
@@ -133,6 +137,7 @@ const InventoryManager: React.FC<Props> = ({ products, transactions, activeCompa
       sgstTotal: sgstAmount,
       date: formData.date,
       entityName: formData.supplierName,
+      entityGstNumber: formData.entityGstNumber,
       type: 'PURCHASE',
       companyId: activeCompany?.id || '',
       userId: currentUser.id
@@ -163,6 +168,7 @@ const InventoryManager: React.FC<Props> = ({ products, transactions, activeCompa
     setFormData({
       productId: '',
       supplierName: '',
+      entityGstNumber: '',
       quantity: '',
       unitCost: '',
       cgstRate: '',
@@ -415,10 +421,15 @@ const InventoryManager: React.FC<Props> = ({ products, transactions, activeCompa
                     value={formData.supplierName} onChange={e => setFormData({ ...formData, supplierName: e.target.value })} />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Purchase Date</label>
-                  <input required type="date" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
-                    value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+                  <label className="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Supplier GST Number</label>
+                  <input type="text" placeholder="GST/PAN ID (optional)" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                    value={formData.entityGstNumber} onChange={e => setFormData({ ...formData, entityGstNumber: e.target.value })} />
                 </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Purchase Date</label>
+                <input required type="date" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>

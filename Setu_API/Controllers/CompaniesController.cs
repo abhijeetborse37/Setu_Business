@@ -28,12 +28,24 @@ namespace Setu.Api.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Company>>> GetCompanies()
         {
-            return await _context.Companies
-                .Where(c => c.UserId == UserId)
-                .ToListAsync();
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var isAdmin = userRole == "Admin";
+
+            // Admins see all companies; Customers see only their own
+            if (isAdmin)
+            {
+                return await _context.Companies.ToListAsync();
+            }
+            else
+            {
+                return await _context.Companies
+                    .Where(c => c.UserId == UserId)
+                    .ToListAsync();
+            }
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<Company>> CreateCompany(Company company)
         {
             /*
@@ -49,7 +61,7 @@ namespace Setu.Api.Controllers
             */
 
             company.Id = Guid.NewGuid();
-            company.UserId = UserId;
+            company.UserId = company.UserId != Guid.Empty ? company.UserId : UserId;
             company.IncorporationDate = DateTime.SpecifyKind(company.IncorporationDate, DateTimeKind.Utc);
             _context.Companies.Add(company);
 
@@ -69,7 +81,19 @@ namespace Setu.Api.Controllers
         public async Task<IActionResult> UpdateCompany(Guid id, Company company)
         {
             if (id != company.Id) return BadRequest();
-            if (company.UserId != UserId) return Forbid();
+            
+            var existingCompany = await _context.Companies.FindAsync(id);
+            if (existingCompany == null) return NotFound();
+
+            var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+            var isAdmin = userRole == "Admin";
+
+            // Only Admin can update any company; Customers can only update their own
+            if (!isAdmin && existingCompany.UserId != UserId)
+            {
+                return Forbid("You can only edit your own company details.");
+            }
+
             company.IncorporationDate = DateTime.SpecifyKind(company.IncorporationDate, DateTimeKind.Utc);
             _context.Entry(company).State = EntityState.Modified;
 
@@ -87,11 +111,11 @@ namespace Setu.Api.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteCompany(Guid id)
         {
             var company = await _context.Companies.FindAsync(id);
             if (company == null) return NotFound();
-            if (company.UserId != UserId) return Forbid();
 
             _context.Companies.Remove(company);
             await _context.SaveChangesAsync();

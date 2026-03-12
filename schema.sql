@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS "Users" (
     "PasswordHash" TEXT NOT NULL,
     "Role" INTEGER NOT NULL, -- Enum: 0=Admin, 1=Customer
     "Avatar" TEXT,
+    "ContactNo" TEXT,
+    "AllowedTabsPattern" TEXT DEFAULT '*',
     "IsActive" BOOLEAN DEFAULT TRUE,
     "SubscriptionId" UUID,
     "CreatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

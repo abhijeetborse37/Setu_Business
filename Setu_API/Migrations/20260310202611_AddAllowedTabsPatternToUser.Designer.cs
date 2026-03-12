@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Setu.Api.Data;
@@ -11,9 +12,11 @@ using Setu.Api.Data;
 namespace Setu.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260310202611_AddAllowedTabsPatternToUser")]
+    partial class AddAllowedTabsPatternToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -34,12 +37,6 @@ namespace Setu.Api.Migrations
 
                     b.Property<string>("BankAccount")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("BankName")
-                        .HasColumnType("text");
-
-                    b.Property<string>("BranchName")
                         .HasColumnType("text");
 
                     b.Property<string>("Contact")
@@ -305,9 +302,6 @@ namespace Setu.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("CgstTotal")
-                        .HasColumnType("numeric");
-
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uuid");
 
@@ -318,18 +312,9 @@ namespace Setu.Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("EntityGstNumber")
-                        .HasColumnType("text");
-
                     b.Property<string>("InvoiceNumber")
                         .IsRequired()
                         .HasColumnType("text");
-
-                    b.Property<decimal>("RoundOff")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("SgstTotal")
-                        .HasColumnType("numeric");
 
                     b.Property<decimal>("TotalAmount")
                         .HasColumnType("numeric");
@@ -357,15 +342,6 @@ namespace Setu.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<decimal>("CgstAmount")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("CgstRate")
-                        .HasColumnType("numeric");
-
-                    b.Property<string>("HsnCode")
-                        .HasColumnType("text");
-
                     b.Property<Guid>("ProductId")
                         .HasColumnType("uuid");
 
@@ -375,12 +351,6 @@ namespace Setu.Api.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
-
-                    b.Property<decimal>("SgstAmount")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal>("SgstRate")
-                        .HasColumnType("numeric");
 
                     b.Property<decimal>("TaxAmount")
                         .HasColumnType("numeric");

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Setu.Api.Data;
@@ -11,9 +12,11 @@ using Setu.Api.Data;
 namespace Setu.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260311132934_AddHsnCodeToTransactionItem")]
+    partial class AddHsnCodeToTransactionItem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -316,9 +319,6 @@ namespace Setu.Api.Migrations
 
                     b.Property<string>("EntityName")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("EntityGstNumber")
                         .HasColumnType("text");
 
                     b.Property<string>("InvoiceNumber")
