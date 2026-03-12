@@ -48,7 +48,7 @@ namespace Setu.Api.Controllers
                 {
                     var tin = stockItems.FirstOrDefault(s => s.ProductId == p.Id && s.Type == "PURCHASE")?.Total ?? 0;
                     var tout = stockItems.FirstOrDefault(s => s.ProductId == p.Id && s.Type == "SALE")?.Total ?? 0;
-                    return new 
+                    return new
                     {
                         p.Id,
                         p.Name,
@@ -56,7 +56,7 @@ namespace Setu.Api.Controllers
                         p.Category,
                         p.Price,
                         p.PurchasePrice,
-                        Stock = Math.Max(0, p.Stock + tin - tout),
+                        Stock = p.Stock + tin - tout,
                         p.Supplier,
                         p.Sku,
                         p.Image,

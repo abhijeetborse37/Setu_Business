@@ -252,7 +252,7 @@ const SalesManager: React.FC<Props> = ({ products, customers, transactions, acti
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-800 tracking-tight">Stock-Out (Sales)</h2>
-          <p className="text-xs text-slate-500">Track orders and manage multi-item sales</p>
+          <p className="text-xs text-slate-500">Create sales transactions with backorder support for unavailable stock</p>
         </div>
         <div className="flex w-full sm:w-auto space-x-2 print-hidden">
           <button
@@ -473,7 +473,7 @@ const SalesManager: React.FC<Props> = ({ products, customers, transactions, acti
       {
         showModal && (
           <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-[70] flex items-center justify-center p-2 sm:p-4 no-print overflow-y-auto">
-            <div className="bg-white rounded-3xl w-full max-w-4xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-white rounded-3xl w-full max-w-md sm:max-w-lg md:max-w-2xl lg:max-w-4xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-8">
               <div className="bg-slate-50 px-6 sm:px-8 py-4 sm:py-5 border-b border-slate-200 flex justify-between items-center">
                 <div>
                   <h3 className="text-lg sm:text-xl font-bold text-slate-800">{editingTransactionId ? 'Edit Sale' : 'New Sale'}</h3>
@@ -511,7 +511,6 @@ const SalesManager: React.FC<Props> = ({ products, customers, transactions, acti
                   <div className="space-y-3">
                     {lineItems.map((item) => {
                       const selectedProduct = products.find(p => p.id === item.productId);
-                      const isOutOfStock = selectedProduct && selectedProduct.stock <= 0;
 
                       return (
                         <div key={item.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 relative shadow-sm">
@@ -520,7 +519,7 @@ const SalesManager: React.FC<Props> = ({ products, customers, transactions, acti
                               <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Product</label>
                               <select
                                 required
-                                className={`w-full bg-white border ${isOutOfStock ? 'border-amber-400 ring-2 ring-amber-100' : 'border-slate-200'} rounded-xl px-3 py-2.5 text-xs outline-none transition-all cursor-pointer`}
+                                className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none transition-all cursor-pointer"
                                 value={item.productId}
                                 onChange={e => updateLineItem(item.id, 'productId', e.target.value)}
                               >
@@ -529,33 +528,22 @@ const SalesManager: React.FC<Props> = ({ products, customers, transactions, acti
                                   <option
                                     key={p.id}
                                     value={p.id}
-                                    disabled={p.stock <= 0}
-                                    className={p.stock <= 0 ? 'text-slate-400 italic' : 'text-slate-800'}
+                                    className="text-slate-800"
                                   >
-                                    {p.stock <= 0 ? `[OUT OF STOCK] ${p.name}` : `${p.name} (Stock: ${p.stock})`}
+                                    {p.name} (Stock: {p.stock})
                                   </option>
                                 ))}
                               </select>
-                              {isOutOfStock && (
-                                <p className="text-[9px] font-bold text-amber-600 mt-1 uppercase animate-pulse">
-                                  <i className="fas fa-exclamation-triangle mr-1"></i> Blocked: No Stock
-                                </p>
-                              )}
                             </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 md:col-span-7 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 md:col-span-7 gap-3">
                               <div className="col-span-1">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Qty</label>
-                                <input required type="number" min="1" className={`w-full bg-white border ${selectedProduct && Number(item.quantity) > selectedProduct.stock ? 'border-red-500 ring-2 ring-red-100' : 'border-slate-200'} rounded-xl px-3 py-2.5 text-xs outline-none`}
+                                <input required type="number" min="1" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs outline-none"
                                   value={item.quantity} onChange={e => updateLineItem(item.id, 'quantity', e.target.value)} />
-                                {selectedProduct && Number(item.quantity) > selectedProduct.stock && (
-                                  <p className="text-[8px] font-bold text-red-500 mt-1 uppercase tracking-tighter">
-                                    Exceeds {selectedProduct.stock} in stock
-                                  </p>
-                                )}
                               </div>
                               <div className="col-span-1">
                                 <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Price</label>
-                                <input required type="number" step="0.01" className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none"
+                                <input required type="number" step="0.01" className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs outline-none"
                                   value={item.price} onChange={e => updateLineItem(item.id, 'price', e.target.value)} />
                               </div>
                               <div className="col-span-1">

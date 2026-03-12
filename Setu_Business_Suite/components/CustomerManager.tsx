@@ -223,7 +223,7 @@ const CustomerManager: React.FC<Props> = ({ customers, onDataChange, activeCompa
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">Value Portfolio</p>
                 <p className="font-black text-slate-900">{currencySymbol}{customer.totalSpent.toLocaleString()}</p>
               </div>
-              <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex space-x-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <button onClick={(e) => handleEdit(e, customer)} className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white flex items-center justify-center transition-all">
                   <i className="fas fa-pencil-alt text-[10px]"></i>
                 </button>

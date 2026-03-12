@@ -22,12 +22,6 @@ const Header: React.FC<HeaderProps> = ({ activeTab, companyName, onMenuClick }) 
         </button>
         <div>
           <h1 className="text-lg md:text-2xl font-bold text-slate-800 leading-none">{currentTitle}</h1>
-          {companyName && (
-            <p className="text-[10px] md:text-sm text-slate-500 flex items-center mt-1 font-medium">
-              <i className="fas fa-building mr-1.5 text-blue-500 text-[10px]"></i>
-              <span className="truncate max-w-[120px] md:max-w-none">{companyName}</span>
-            </p>
-          )}
         </div>
       </div>
 

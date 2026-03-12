@@ -445,15 +445,15 @@ const AdminPanel: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Admin Portal</h1>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Platform Management &amp; Control</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight uppercase">Admin Portal</h1>
+          <p className="text-[9px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">Platform Management &amp; Control</p>
         </div>
-        <div className="flex flex-wrap gap-2 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm w-fit">
+        <div className="flex flex-col sm:flex-wrap gap-1 sm:gap-2 bg-white p-1 rounded-2xl border border-slate-200 shadow-sm w-full sm:w-fit">
           {(['dashboard', 'subscriptions', 'plans', 'businesses'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveSubTab(tab)}
-              className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              className={`px-3 sm:px-5 py-2 sm:py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all flex-1 sm:flex-none text-center ${
                 activeSubTab === tab ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'
               }`}
             >
@@ -467,7 +467,7 @@ const AdminPanel: React.FC = () => {
       {activeSubTab === 'dashboard' && (
         <div className="space-y-8">
           {/* Stat Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <StatCard title="Total Customers" value={stats?.totalUsers || 0} icon="fa-users" color="blue" />
             <StatCard title="Active Subs" value={stats?.activeSubscriptions || 0} icon="fa-check-circle" color="emerald" />
             <StatCard title="Expired Subs" value={stats?.expiredSubscriptions || 0} icon="fa-clock" color="amber" />
@@ -728,10 +728,10 @@ const AdminPanel: React.FC = () => {
 
       {/* Assign Subscription Modal */}
       {showSubForm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 my-8">
             <div className="h-1.5 bg-gradient-to-r from-blue-600 to-emerald-500"></div>
-            <div className="p-8">
+            <div className="p-4 sm:p-8">
               <h3 className="text-xl font-black text-slate-800 mb-1 uppercase tracking-tight">
                 {renewalMode ? '↻ Renew/Upgrade Subscription' : 'Assign New Subscription'}
               </h3>
@@ -844,8 +844,8 @@ const AdminPanel: React.FC = () => {
 
       {/* Invoice Modal */}
       {invoiceUser && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-[2rem] w-full max-w-md sm:max-w-lg md:max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 my-8">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <h3 className="font-black text-slate-800 uppercase tracking-tight text-lg">Subscription Invoice</h3>
               <div className="flex gap-2">
@@ -936,10 +936,10 @@ const AdminPanel: React.FC = () => {
 
       {/* Register Business Modal */}
       {showBusinessForm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 my-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-[2rem] w-full max-w-md sm:max-w-lg md:max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 my-8">
             <div className="h-1.5 bg-gradient-to-r from-emerald-600 to-blue-600"></div>
-            <div className="p-8">
+            <div className="p-4 sm:p-8">
               <h3 className="text-xl font-black text-slate-800 mb-1 uppercase tracking-tight">Register Business for Customer</h3>
               <p className="text-xs text-slate-400 mb-6">Create a new business account and assign it to a customer</p>
 
@@ -960,7 +960,7 @@ const AdminPanel: React.FC = () => {
                 </div>
 
                 {/* Business Details */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Business Name *</label>
                     <input
@@ -1223,10 +1223,10 @@ const AdminPanel: React.FC = () => {
 
       {/* Plan Form Modal */}
       {showPlanForm && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 my-8">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[80] flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white rounded-[2rem] w-full max-w-md sm:max-w-lg md:max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 my-8">
             <div className="h-1.5 bg-gradient-to-r from-blue-600 to-emerald-500"></div>
-            <div className="p-8">
+            <div className="p-4 sm:p-8">
               <h3 className="text-xl font-black text-slate-800 mb-1 uppercase tracking-tight">{editingPlanId ? 'Edit Plan' : 'Create New Plan'}</h3>
               <p className="text-xs text-slate-400 mb-6">Configure subscription plan details and features</p>
 
@@ -1237,7 +1237,7 @@ const AdminPanel: React.FC = () => {
               )}
 
               <form onSubmit={handleSavePlan} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Plan Name *</label>
                     <input

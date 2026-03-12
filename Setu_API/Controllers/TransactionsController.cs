@@ -63,7 +63,8 @@ namespace Setu.Api.Controllers
             {
                 foreach (var item in transaction.Items)
                 {
-                    // Calculate current stock for the product
+                    // Stock validation removed - now allowing negative inventory (backorders)
+                    // Calculate current stock for informational purposes
                     var tin = await _context.TransactionItems
                         .Include(ti => ti.Transaction)
                         .Where(ti => ti.ProductId == item.ProductId && ti.Transaction!.Type == "PURCHASE" && ti.Transaction.CompanyId == transaction.CompanyId)
@@ -78,10 +79,8 @@ namespace Setu.Api.Controllers
                     var initialStock = product?.Stock ?? 0;
                     var currentStock = initialStock + tin - tout;
 
-                    if (item.Quantity > currentStock)
-                    {
-                        return BadRequest($"Insufficient stock for product '{item.ProductName ?? product?.Name}'. Current stock: {currentStock}, Requested: {item.Quantity}");
-                    }
+                    // Log current stock for reference (optional)
+                    Console.WriteLine($"Product: {product?.Name}, Initial Stock: {initialStock}, Calculated Stock: {currentStock}, Sale Quantity: {item.Quantity}, Resulting Stock: {currentStock - item.Quantity}");
                 }
             }
 
@@ -154,6 +153,7 @@ namespace Setu.Api.Controllers
                 {
                     foreach (var item in transaction.Items)
                     {
+                        // Stock validation removed - now allowing negative inventory (backorders)
                         // Calculate current stock EXCLUDING the current transaction (since we're updating it)
                         var tin = await _context.TransactionItems
                             .Include(ti => ti.Transaction)
@@ -169,10 +169,8 @@ namespace Setu.Api.Controllers
                         var initialStock = product?.Stock ?? 0;
                         var currentStock = initialStock + tin - tout;
 
-                        if (item.Quantity > currentStock)
-                        {
-                            return BadRequest($"Insufficient stock-out for product '{item.ProductName ?? product?.Name}'. Available limit: {currentStock}, Requested: {item.Quantity}");
-                        }
+                        // Log current stock for reference (optional)
+                        Console.WriteLine($"Product: {product?.Name}, Initial Stock: {initialStock}, Calculated Stock: {currentStock}, Sale Quantity: {item.Quantity}, Resulting Stock: {currentStock - item.Quantity}");
                     }
                 }
 

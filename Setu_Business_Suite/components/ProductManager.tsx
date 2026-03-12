@@ -291,7 +291,7 @@ const ProductManager: React.FC<Props> = ({ products, onDataChange, activeCompany
                   </span>
                 </div>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
+                <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-300 md:translate-x-4 md:group-hover:translate-x-0">
                   <button onClick={(e) => startEdit(e, product)} className="w-9 h-9 bg-white rounded-full flex items-center justify-center text-slate-600 hover:bg-blue-600 hover:text-white transition-all shadow-lg">
                     <i className="fas fa-pencil-alt text-xs"></i>
                   </button>
@@ -473,7 +473,7 @@ const ProductManager: React.FC<Props> = ({ products, onDataChange, activeCompany
                     {errors.name && <p className="text-[10px] text-red-500 mt-2 font-bold ml-1">{errors.name}</p>}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest ml-1">Selling Price ({currencySymbol})</label>
                       <input

@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Company, Product, Customer, Transaction } from '../types';
+import { formatDate } from '../utils';
 
 interface DashboardProps {
   company: Company | null;
@@ -10,12 +11,6 @@ interface DashboardProps {
   transactions: Transaction[];
   onNavigate: (tab: string) => void;
 }
-
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '';
-  const [year, month, day] = dateStr.split('-');
-  return `${day}/${month}/${year}`;
-};
 
 const Dashboard: React.FC<DashboardProps> = ({ company, products, customers, transactions, onNavigate }) => {
   const [filter, setFilter] = useState<'DAILY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY'>('MONTHLY');

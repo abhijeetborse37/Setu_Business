@@ -185,7 +185,7 @@ const InventoryManager: React.FC<Props> = ({ products, transactions, activeCompa
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-800 tracking-tight">Purchase History</h2>
-          <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">Inventory Inflow Records</p>
+          <p className="text-xs text-slate-500 uppercase font-bold tracking-widest">Inventory Inflow Records - Fulfills backorders and increases stock</p>
         </div>
         <div className="flex w-full sm:w-auto space-x-2 print-hidden">
           <button
@@ -431,7 +431,7 @@ const InventoryManager: React.FC<Props> = ({ products, transactions, activeCompa
                 <input required type="date" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-blue-500 outline-none"
                   value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                 <div>
                   <label className="block text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Quantity</label>
                   <input required type="number" placeholder="0" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs outline-none"

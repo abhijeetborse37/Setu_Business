@@ -88,7 +88,7 @@ const Analytics: React.FC<Props> = ({ company, products, transactions }) => {
           <h3 className="text-xl font-bold text-slate-800">Financial Reports</h3>
           <p className="text-sm text-slate-500">Select date ranges and transaction type to generate detailed ledgers</p>
         </div>
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full md:w-auto">
           {/* Transaction Type Filter */}
           <div className="flex items-center space-x-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
             <select 
@@ -103,10 +103,10 @@ const Analytics: React.FC<Props> = ({ company, products, transactions }) => {
           </div>
 
           {/* Date Range Filter */}
-          <div className="flex items-center space-x-2 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-            <input type="date" className="bg-transparent text-xs font-bold outline-none border-none" value={startDate} onChange={e => setStartDate(e.target.value)} />
-            <span className="text-slate-300 text-xs">to</span>
-            <input type="date" className="bg-transparent text-xs font-bold outline-none border-none" value={endDate} onChange={e => setEndDate(e.target.value)} />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 bg-slate-50 p-2 sm:p-1.5 rounded-xl border border-slate-200 w-full sm:w-auto">
+            <input type="date" className="flex-1 sm:flex-none bg-white sm:bg-transparent text-xs font-bold outline-none border sm:border-none rounded-lg sm:rounded-none px-3 py-2 sm:py-0" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <span className="text-slate-300 text-xs text-center">to</span>
+            <input type="date" className="flex-1 sm:flex-none bg-white sm:bg-transparent text-xs font-bold outline-none border sm:border-none rounded-lg sm:rounded-none px-3 py-2 sm:py-0" value={endDate} onChange={e => setEndDate(e.target.value)} />
           </div>
           <button
             onClick={handleDownloadReport}
