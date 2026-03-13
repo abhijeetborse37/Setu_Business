@@ -1,17 +1,29 @@
 import axios from 'axios';
 
 // Determine API URL based on environment
-const getAPIUrl = (): string => {
-  // For development: check if we're accessing from localhost or a network IP
-  const hostname = window.location.hostname;
+// const getAPIUrl = (): string => {
+//   // For development: check if we're accessing from localhost or a network IP
+//   const hostname = window.location.hostname;
   
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    // Direct localhost access
-    return 'http://localhost:5039/api';
-  } else {
-    // Network access from mobile or other device - replace localhost with the actual hostname
-    return `http://${hostname}:5039/api`;
+//   if (hostname === 'localhost' || hostname === '127.0.0.1') {
+//     // Direct localhost access
+//     return 'http://localhost:5039/api';
+//   } else {
+//     // Network access from mobile or other device - replace localhost with the actual hostname
+//     return `http://${hostname}:5039/api`;
+//   }
+// };
+
+const getAPIUrl = (): string => {
+  const hostname = window.location.hostname;
+
+  // Local development
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return "http://localhost:5039/api";
   }
+
+  // Production (Render backend)
+  return "https://setu-business.onrender.com";
 };
 
 const API_URL = getAPIUrl();
