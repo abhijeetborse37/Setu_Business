@@ -62,6 +62,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(
 
 // Services
 builder.Services.AddScoped<Setu.Api.Services.ISubscriptionService, Setu.Api.Services.SubscriptionService>();
+builder.Services.AddHostedService<KeepAliveService>();
 
 // Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -89,8 +90,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:5173"
             )
             .AllowAnyHeader()
-            .AllowAnyMethod();
-            //.AllowCredentials();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
@@ -161,8 +162,8 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-app.UseRouting();
 app.UseCors("AllowFrontend");
+app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -170,4 +171,55 @@ app.MapControllers();
 
 app.MapGet("/", () => "SETU ERP API Running...");
 
+// Health check endpoint for keep-alive ping
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }));
+
 app.Run();
+
+// ===== KEEP-ALIVE BACKGROUND SERVICE =====
+// Prevents Render free tier from putting the server to sleep
+public class KeepAliveService : BackgroundService
+{
+    private readonly ILogger<KeepAliveService> _logger;
+    private readonly IConfiguration _configuration;
+
+    public KeepAliveService(ILogger<KeepAliveService> logger, IConfiguration configuration)
+    {
+        _logger = logger;
+        _configuration = configuration;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var selfUrl = _configuration["RENDER_EXTERNAL_URL"] 
+                      ?? _configuration["SELF_URL"] 
+                      ?? null;
+
+        if (string.IsNullOrEmpty(selfUrl))
+        {
+            _logger.LogWarning("KeepAlive: No RENDER_EXTERNAL_URL or SELF_URL configured. Keep-alive disabled.");
+            return;
+        }
+
+        using var httpClient = new HttpClient();
+        httpClient.Timeout = TimeSpan.FromSeconds(30);
+
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(TimeSpan.FromMinutes(14), stoppingToken);
+                var response = await httpClient.GetAsync($"{selfUrl}/health", stoppingToken);
+                _logger.LogInformation("KeepAlive ping: {StatusCode} at {Time}", response.StatusCode, DateTime.UtcNow);
+            }
+            catch (TaskCanceledException)
+            {
+                // Server is shutting down, ignore
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("KeepAlive ping failed: {Message}", ex.Message);
+            }
+        }
+    }
+}

@@ -30,7 +30,36 @@ const API_URL = getAPIUrl();
 
 const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
+  timeout: 30000, // 30s timeout to handle Render cold starts
 });
+
+// Retry interceptor for handling cold-start failures
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const config = error.config;
+    
+    // Only retry on network errors or 5xx server errors (cold start issues)
+    if (!config || config._retryCount >= 3) {
+      return Promise.reject(error);
+    }
+    
+    const isNetworkError = !error.response && error.code !== 'ECONNABORTED';
+    const isServerError = error.response && error.response.status >= 500;
+    
+    if (isNetworkError || isServerError) {
+      config._retryCount = (config._retryCount || 0) + 1;
+      console.log(`Retrying request (${config._retryCount}/3): ${config.url}`);
+      
+      // Wait 2 seconds before retrying
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return api(config);
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
 api.interceptors.request.use((config) => {
   const userString = localStorage.getItem('setu_user');
