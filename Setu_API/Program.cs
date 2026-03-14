@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Setu.Api.Data;
-
 using Microsoft.OpenApi.Models;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -55,6 +55,11 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+//Added Redis Connection Multiplexer
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect(builder.Configuration["REDIS_CONNECTION"])
+);
+
 // Services
 builder.Services.AddScoped<Setu.Api.Services.ISubscriptionService, Setu.Api.Services.SubscriptionService>();
 
@@ -88,6 +93,8 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
+
+
 
 var app = builder.Build();
 
