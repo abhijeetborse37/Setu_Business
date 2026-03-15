@@ -31,7 +31,7 @@ const API_URL = getAPIUrl();
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
-  timeout: 60000, // 30s timeout to handle Render cold starts
+  timeout: 120000, // 120s timeout to better handle Railway cold starts & sleep.
 });
 
 // Retry interceptor for handling cold-start failures
