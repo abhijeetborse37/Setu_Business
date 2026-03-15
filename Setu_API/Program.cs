@@ -162,10 +162,42 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = "swagger";
 });
 
-app.UseCors("AllowFrontend");
+// Exception logging and handling
+app.UseExceptionHandler(exceptionHandlerApp =>
+{
+    exceptionHandlerApp.Run(async context =>
+    {
+        var exceptionHandlerPathFeature = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+        var exception = exceptionHandlerPathFeature?.Error;
+
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+
+        // Add explicit CORS headers to the error response so the frontend isn't blocked by CORS policies.
+        var origin = context.Request.Headers["Origin"].ToString();
+        if (origin == "https://setubusinesserp.netlify.app" || origin == "http://localhost:5173")
+        {
+            context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
+            context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
+        }
+
+        await context.Response.WriteAsJsonAsync(new 
+        { 
+            message = "Database or Internal Error Occurred.",
+            details = exception?.Message,
+            inner = exception?.InnerException?.Message
+        });
+    });
+});
+
 app.UseRouting();
+
+// CORS is best placed after UseRouting and before Auth
+app.UseCors("AllowFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
+
 
 app.MapControllers();
 
