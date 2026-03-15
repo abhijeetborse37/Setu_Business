@@ -307,8 +307,9 @@ const AdminPanel: React.FC = () => {
 
   const handleSavePlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!planFormData.name || !planFormData.validity || planFormData.price <= 0) {
-      setPlanFormError('Plan name, validity, and price are required.');
+    const priceAmt = Number(planFormData.price);
+    if (!planFormData.name || !planFormData.validity || isNaN(priceAmt) || priceAmt < 0 || String(planFormData.price).trim() === '') {
+      setPlanFormError('Plan name, validity, and a valid price (≥ 0) are required.');
       return;
     }
 
