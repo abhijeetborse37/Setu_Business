@@ -6,10 +6,9 @@ FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 COPY ["Setu.Api.csproj", "./"]
-RUN dotnet restore "Setu_API/Setu.Api.csproj"
+RUN dotnet restore "Setu.Api.csproj"
 
 COPY . .
-WORKDIR "/src/Setu_API"
 RUN dotnet publish "Setu.Api.csproj" -c Release -o /app/publish
 
 FROM base AS final
