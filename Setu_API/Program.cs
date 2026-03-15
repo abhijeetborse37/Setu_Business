@@ -56,13 +56,13 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 //Added Redis Connection Multiplexer
-builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(builder.Configuration["REDIS_CONNECTION"])
-);
+// builder.Services.AddSingleton<IConnectionMultiplexer>(
+//     ConnectionMultiplexer.Connect(builder.Configuration["REDIS_CONNECTION"])
+// );
 
 // Services
 builder.Services.AddScoped<Setu.Api.Services.ISubscriptionService, Setu.Api.Services.SubscriptionService>();
-builder.Services.AddHostedService<KeepAliveService>();
+//builder.Services.AddHostedService<KeepAliveService>();
 
 // Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
