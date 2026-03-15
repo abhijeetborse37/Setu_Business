@@ -51,9 +51,16 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// DbContext
+// DbContext setup with resilient connection handling for Railway Postgres
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        npgsqlOptionsAction: sqlOptions =>
+        {
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 10,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorCodesToAdd: null);
+        }));
 
 //Added Redis Connection Multiplexer
 // builder.Services.AddSingleton<IConnectionMultiplexer>(
