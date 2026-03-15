@@ -23,7 +23,7 @@ const getAPIUrl = (): string => {
   }
 
   // Production (Render backend)
-  return "https://setu-business.onrender.com/api";
+  return "https://setubusiness-production.up.railway.app/api";
 };
 
 const API_URL = getAPIUrl();
