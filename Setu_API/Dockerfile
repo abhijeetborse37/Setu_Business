@@ -5,7 +5,7 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY ["Setu_API/Setu.Api.csproj", "Setu_API/"]
+COPY ["Setu.Api.csproj", "./"]
 RUN dotnet restore "Setu_API/Setu.Api.csproj"
 
 COPY . .
