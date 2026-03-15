@@ -115,19 +115,27 @@ const AdminPanel: React.FC = () => {
 
   const fetchData = async () => {
     setIsLoading(true);
+    
+    // Fire requests independently so one failure doesn't stop others
     try {
-      const [statsRes, userRes, pendingRes, planRes] = await Promise.all([
-        adminService.getStats(),
-        adminService.getUsers(),
-        adminService.getPendingSubscriptions(),
-        adminService.getPlans(),
-      ]);
-      setStats(statsRes.data);
-      setUsers(userRes.data);
-      setPendingSubs(pendingRes.data);
-      setPlans(planRes.data);
-    } catch (err) {
-      console.error('Error fetching admin data', err);
+      adminService.getStats()
+        .then(res => setStats(res.data))
+        .catch(err => console.error('Error fetching stats:', err));
+        
+      adminService.getUsers()
+        .then(res => setUsers(res.data))
+        .catch(err => console.error('Error fetching users:', err));
+        
+      adminService.getPendingSubscriptions()
+        .then(res => setPendingSubs(res.data))
+        .catch(err => console.error('Error fetching pending subs:', err));
+        
+      adminService.getPlans()
+        .then(res => setPlans(res.data))
+        .catch(err => console.error('Error fetching plans:', err));
+
+      // Wait a moment for the critical ones to likely complete before hiding spinner
+      await new Promise(resolve => setTimeout(resolve, 800));
     } finally {
       setIsLoading(false);
     }

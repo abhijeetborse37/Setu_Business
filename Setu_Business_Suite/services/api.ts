@@ -45,7 +45,8 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    const isNetworkError = !error.response && error.code !== 'ECONNABORTED';
+    // On timeout (ECONNABORTED) or if there's no response, consider it a network error
+    const isNetworkError = !error.response || error.code === 'ECONNABORTED';
     const isServerError = error.response && error.response.status >= 500;
 
     if (isNetworkError || isServerError) {
