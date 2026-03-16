@@ -93,7 +93,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(
-                "https://setubusinesserp.netlify.app",
+                "https://setu.abhijitborse3797.workers.dev",
                 "http://localhost:5173"
             )
             .AllowAnyHeader()
@@ -182,7 +182,7 @@ app.UseExceptionHandler(exceptionHandlerApp =>
 
         // Add explicit CORS headers to the error response so the frontend isn't blocked by CORS policies.
         var origin = context.Request.Headers["Origin"].ToString();
-        if (origin == "https://setubusinesserp.netlify.app" || origin == "http://localhost:5173")
+        if (origin == "https://setu.abhijitborse3797.workers.dev" || origin == "http://localhost:5173")
         {
             context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
             context.Response.Headers.Append("Access-Control-Allow-Credentials", "true");
