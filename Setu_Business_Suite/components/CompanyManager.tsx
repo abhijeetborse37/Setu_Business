@@ -70,15 +70,15 @@ const CompanyManager: React.FC<Props> = ({ companies, activeId, setActiveId, pro
 
   const handleEdit = (e: React.MouseEvent, company: Company) => {
     e.stopPropagation(); e.preventDefault();
-    
+
     // Only Admin can edit any company; Customers can only edit their own
     if (!isAdmin && company.userId !== currentUser.id) {
       alert('Access Denied: You can only edit your own company details.');
       return;
     }
-    
+
     setEditingCompanyId(company.id);
-    // Sanitize data for form
+    // Sanitize the data for form
     setFormData({
       ...company,
       incorporationDate: company.incorporationDate ? new Date(company.incorporationDate).toISOString().split('T')[0] : initialFormState.incorporationDate
@@ -88,13 +88,13 @@ const CompanyManager: React.FC<Props> = ({ companies, activeId, setActiveId, pro
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation(); e.preventDefault();
-    
+
     // Only Admin can delete
     if (!isAdmin) {
       alert('Access Denied: Only super admin can delete companies.');
       return;
     }
-    
+
     if (products.some(p => p.companyId === id)) {
       alert(`Cannot delete entity: There are ${products.filter(p => p.companyId === id).length} products linked to this business.`);
       return;
