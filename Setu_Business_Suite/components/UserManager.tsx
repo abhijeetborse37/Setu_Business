@@ -128,7 +128,7 @@ const UserManager: React.FC<Props> = ({ currentUser }) => {
     }
   };
 
-  const customerUsers = users.filter(u => u.role === 1 || u.role === 'Customer');
+  const customerUsers = users.filter(u => u.role === 'Customer' || u.role === 1);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">

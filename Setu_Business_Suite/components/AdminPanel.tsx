@@ -416,7 +416,7 @@ const AdminPanel: React.FC = () => {
     setTimeout(() => { printWin.print(); printWin.close(); }, 300);
   };
 
-  const customerUsers = users.filter(u => u.role === 1 || u.role === 'Customer');
+  const customerUsers = users.filter(u => u.role === 'Customer' || u.role === 1);
 
   // Helper function to get plan status
   const getPlanStatus = (subscription: any) => {
