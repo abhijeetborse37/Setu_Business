@@ -23,13 +23,46 @@ namespace Setu.Api.Controllers
         private Guid UserId => Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
 
         [HttpGet("{companyId}")]
-        public async Task<ActionResult<IEnumerable<Transaction>>> GetTransactions(Guid companyId)
+        public async Task<ActionResult<IEnumerable<object>>> GetTransactions(Guid companyId)
         {
-            return await _context.Transactions
-                .Include(t => t.Items)
+            // OPTIMIZATION: Use projections instead of loading all entities into memory
+            var transactions = await _context.Transactions
                 .Where(t => t.CompanyId == companyId)
                 .OrderByDescending(t => t.Date)
+                .Select(t => new
+                {
+                    t.Id,
+                    t.Type,
+                    t.TotalAmount,
+                    t.TotalTax,
+                    t.CgstTotal,
+                    t.SgstTotal,
+                    t.RoundOff,
+                    t.Date,
+                    t.EntityName,
+                    t.EntityGstNumber,
+                    t.InvoiceNumber,
+                    t.CompanyId,
+                    Items = t.Items.Select(i => new
+                    {
+                        i.Id,
+                        i.ProductId,
+                        i.ProductName,
+                        i.HsnCode,
+                        i.Quantity,
+                        i.UnitPrice,
+                        i.TaxRate,
+                        i.TaxAmount,
+                        i.TotalAmount,
+                        i.CgstRate,
+                        i.SgstRate,
+                        i.CgstAmount,
+                        i.SgstAmount
+                    }).ToList()
+                })
                 .ToListAsync();
+
+            return Ok(transactions);
         }
 
         [HttpPost]
@@ -40,47 +73,24 @@ namespace Setu.Api.Controllers
             transaction.Date = DateTime.SpecifyKind(transaction.Date, DateTimeKind.Utc);
             transaction.InvoiceNumber = "TXN-" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
 
+            // OPTIMIZATION: Batch fetch all products needed instead of fetching one by one
+            var productIds = transaction.Items.Select(i => i.ProductId).Distinct().ToList();
+            var products = await _context.Products
+                .Where(p => productIds.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id);
+
             foreach (var item in transaction.Items)
             {
                 item.Id = Guid.NewGuid();
                 item.TransactionId = transaction.Id;
                 
-                // Fetch product name and HSN Code if missing
-                if (string.IsNullOrEmpty(item.ProductName) || string.IsNullOrEmpty(item.HsnCode))
+                // Fetch product name and HSN Code if missing - using pre-loaded products
+                if (products.TryGetValue(item.ProductId, out var product))
                 {
-                    var product = await _context.Products.FindAsync(item.ProductId);
-                    if (product != null)
-                    {
-                        if (string.IsNullOrEmpty(item.ProductName))
-                            item.ProductName = product.Name;
-                        if (string.IsNullOrEmpty(item.HsnCode))
-                            item.HsnCode = product.HsnCode;
-                    }
-                }
-            }
-
-            if (transaction.Type == "SALE")
-            {
-                foreach (var item in transaction.Items)
-                {
-                    // Stock validation removed - now allowing negative inventory (backorders)
-                    // Calculate current stock for informational purposes
-                    var tin = await _context.TransactionItems
-                        .Include(ti => ti.Transaction)
-                        .Where(ti => ti.ProductId == item.ProductId && ti.Transaction!.Type == "PURCHASE" && ti.Transaction.CompanyId == transaction.CompanyId)
-                        .SumAsync(ti => ti.Quantity);
-
-                    var tout = await _context.TransactionItems
-                        .Include(ti => ti.Transaction)
-                        .Where(ti => ti.ProductId == item.ProductId && ti.Transaction!.Type == "SALE" && ti.Transaction.CompanyId == transaction.CompanyId)
-                        .SumAsync(ti => ti.Quantity);
-
-                    var product = await _context.Products.FindAsync(item.ProductId);
-                    var initialStock = product?.Stock ?? 0;
-                    var currentStock = initialStock + tin - tout;
-
-                    // Log current stock for reference (optional)
-                    Console.WriteLine($"Product: {product?.Name}, Initial Stock: {initialStock}, Calculated Stock: {currentStock}, Sale Quantity: {item.Quantity}, Resulting Stock: {currentStock - item.Quantity}");
+                    if (string.IsNullOrEmpty(item.ProductName))
+                        item.ProductName = product.Name;
+                    if (string.IsNullOrEmpty(item.HsnCode))
+                        item.HsnCode = product.HsnCode;
                 }
             }
 
@@ -126,6 +136,12 @@ namespace Setu.Api.Controllers
                     existing.InvoiceNumber = transaction.InvoiceNumber;
                 }
 
+                // OPTIMIZATION: Batch fetch all products instead of one-by-one
+                var productIds = transaction.Items.Select(i => i.ProductId).Distinct().ToList();
+                var products = await _context.Products
+                    .Where(p => productIds.Contains(p.Id))
+                    .ToDictionaryAsync(p => p.Id);
+
                 // Update Items: Clear and Re-add (Cleanest way for simple transactions)
                 _context.TransactionItems.RemoveRange(existing.Items);
                 
@@ -134,44 +150,16 @@ namespace Setu.Api.Controllers
                     item.Id = Guid.NewGuid();
                     item.TransactionId = id;
                     
-                    if (string.IsNullOrEmpty(item.ProductName) || string.IsNullOrEmpty(item.HsnCode))
+                    // Use pre-loaded products instead of individual lookups
+                    if (products.TryGetValue(item.ProductId, out var product))
                     {
-                        var product = await _context.Products.FindAsync(item.ProductId);
-                        if (product != null)
-                        {
-                            if (string.IsNullOrEmpty(item.ProductName))
-                                item.ProductName = product.Name;
-                            if (string.IsNullOrEmpty(item.HsnCode))
-                                item.HsnCode = product.HsnCode;
-                        }
+                        if (string.IsNullOrEmpty(item.ProductName))
+                            item.ProductName = product.Name;
+                        if (string.IsNullOrEmpty(item.HsnCode))
+                            item.HsnCode = product.HsnCode;
                     }
                     
                     _context.TransactionItems.Add(item);
-                }
-
-                if (transaction.Type == "SALE")
-                {
-                    foreach (var item in transaction.Items)
-                    {
-                        // Stock validation removed - now allowing negative inventory (backorders)
-                        // Calculate current stock EXCLUDING the current transaction (since we're updating it)
-                        var tin = await _context.TransactionItems
-                            .Include(ti => ti.Transaction)
-                            .Where(ti => ti.ProductId == item.ProductId && ti.Transaction!.Type == "PURCHASE" && ti.Transaction.CompanyId == existing.CompanyId)
-                            .SumAsync(ti => ti.Quantity);
-
-                        var tout = await _context.TransactionItems
-                            .Include(ti => ti.Transaction)
-                            .Where(ti => ti.ProductId == item.ProductId && ti.Transaction!.Type == "SALE" && ti.Transaction.CompanyId == existing.CompanyId && ti.TransactionId != id)
-                            .SumAsync(ti => ti.Quantity);
-
-                        var product = await _context.Products.FindAsync(item.ProductId);
-                        var initialStock = product?.Stock ?? 0;
-                        var currentStock = initialStock + tin - tout;
-
-                        // Log current stock for reference (optional)
-                        Console.WriteLine($"Product: {product?.Name}, Initial Stock: {initialStock}, Calculated Stock: {currentStock}, Sale Quantity: {item.Quantity}, Resulting Stock: {currentStock - item.Quantity}");
-                    }
                 }
 
                 await _context.SaveChangesAsync();
