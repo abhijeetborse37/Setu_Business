@@ -30,20 +30,44 @@ namespace Setu.Api.Controllers
         {
             try
             {
+                // OPTIMIZATION: Fetch products with efficient projection - only needed fields
                 var products = await _context.Products
                     .Where(p => p.CompanyId == companyId)
                     .OrderBy(p => p.Name)
+                    .Select(p => new
+                    {
+                        p.Id,
+                        p.Name,
+                        p.Description,
+                        p.Category,
+                        p.Price,
+                        p.PurchasePrice,
+                        p.Stock,
+                        p.Supplier,
+                        p.Sku,
+                        p.Image,
+                        p.CompanyId,
+                        p.UserId,
+                        p.HsnCode,
+                        p.UnitPerPack
+                    })
                     .ToListAsync();
+
+                if (products.Count == 0)
+                {
+                    return Ok(new List<object>());
+                }
 
                 var productIds = products.Select(p => p.Id).ToList();
                 
+                // OPTIMIZATION: Single filtered query - avoid Include, use direct join
                 var stockItems = await _context.TransactionItems
-                    .Include(ti => ti.Transaction)
-                    .Where(ti => productIds.Contains(ti.ProductId))
-                    .GroupBy(ti => new { ti.ProductId, Type = ti.Transaction != null ? ti.Transaction.Type : "NONE" })
+                    .Where(ti => productIds.Contains(ti.ProductId) && ti.Transaction!.CompanyId == companyId)
+                    .GroupBy(ti => new { ti.ProductId, ti.Transaction!.Type })
                     .Select(g => new { g.Key.ProductId, g.Key.Type, Total = g.Sum(x => x.Quantity) })
                     .ToListAsync();
 
+                // OPTIMIZATION: Single pass calculation in memory instead of LINQ-to-SQL
                 var result = products.Select(p => 
                 {
                     var tin = stockItems.FirstOrDefault(s => s.ProductId == p.Id && s.Type == "PURCHASE")?.Total ?? 0;
@@ -61,7 +85,9 @@ namespace Setu.Api.Controllers
                         p.Sku,
                         p.Image,
                         p.CompanyId,
-                        p.UserId
+                        p.UserId,
+                        p.HsnCode,
+                        p.UnitPerPack
                     };
                 });
 

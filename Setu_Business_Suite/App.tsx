@@ -18,7 +18,7 @@ import AccessDenied from './components/AccessDenied';
 import ErrorBoundary from './components/ErrorBoundary';
 
 // Import Backend services and utilities
-import { companyService, productService, transactionService, customerService } from './services/api';
+import { companyService, productService, transactionService, customerService, dashboardService } from './services/api';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -42,6 +42,7 @@ const App: React.FC = () => {
   const fetchData = async () => {
     if (!currentUser) return;
     setIsSyncing(true);
+    
     const normalize = (obj: any) => {
       if (!obj || typeof obj !== 'object') return obj;
       const newObj: any = {};
@@ -53,29 +54,31 @@ const App: React.FC = () => {
     };
 
     try {
-      const companyRes = await companyService.getAll();
-      const normalizedCompanies = (companyRes.data || []).map(normalize);
-      setCompanies(normalizedCompanies);
+      // OPTIMIZATION: Use single unified endpoint instead of 4 separate calls
+      const response = await dashboardService.getInitData();
+      const data = response.data;
 
-      let currentActiveId = activeCompanyId;
+      const normalizedCompanies = (data.companies || []).map(normalize);
+      const normalizedProducts = (data.products || []).map(normalize);
+      const normalizedCustomers = (data.customers || []).map(normalize);
+      const normalizedTransactions = (data.transactions || []).map(normalize);
+
+      setCompanies(normalizedCompanies);
+      setProducts(normalizedProducts);
+      setCustomers(normalizedCustomers);
+      setTransactions(normalizedTransactions);
+
+      // Set active company
+      let currentActiveId = data.activeCompanyId || activeCompanyId;
       if (!currentActiveId || !normalizedCompanies.find((c: any) => c.id === currentActiveId)) {
         currentActiveId = normalizedCompanies.length > 0 ? normalizedCompanies[0].id : null;
+      }
+      
+      if (currentActiveId) {
         setActiveCompanyId(currentActiveId);
       }
-
-      if (currentActiveId) {
-        const fetchResults = await Promise.all([
-          productService.getByCompany(currentActiveId).catch(err => { console.error('Product fetch failed:', err); return { data: [] }; }),
-          transactionService.getByCompany(currentActiveId).catch(err => { console.error('Transaction fetch failed:', err); return { data: [] }; }),
-          customerService.getAll().catch(err => { console.error('Customer fetch failed:', err); return { data: [] }; }),
-        ]);
-        const [productRes, transactionRes, customerRes] = fetchResults;
-        setProducts((productRes.data || []).map(normalize));
-        setTransactions((transactionRes.data || []).map(normalize));
-        setCustomers((customerRes.data || []).map(normalize));
-      }
     } catch (err: any) {
-      console.error('App: Error fetching data:', err.response?.data || err.message);
+      console.error('App: Error fetching dashboard data:', err.response?.data || err.message);
     } finally {
       setIsSyncing(false);
     }

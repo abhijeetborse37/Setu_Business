@@ -82,6 +82,11 @@ export const authService = {
     api.put(`/auth/users/${userId}/tabs`, { allowedTabsPattern }),
 };
 
+export const dashboardService = {
+  // NEW: Unified endpoint for all initial data needed after login
+  getInitData: () => api.get('/dashboard/init'),
+};
+
 export const companyService = {
   getAll: () => api.get('/companies'),
   create: (data: any) => api.post('/companies', data),
