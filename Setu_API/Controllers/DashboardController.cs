@@ -147,49 +147,46 @@ namespace Setu.Api.Controllers
                     })
                     .ToListAsync();
 
-                // Get transactions efficiently - only for first company to avoid data explosion
-                var firstCompanyId = companies.FirstOrDefault()?.Id ?? Guid.Empty;
-                var transactions = (object?)null;
-                
-                if (firstCompanyId != Guid.Empty)
-                {
-                    transactions = await _context.Transactions
-                        .Where(t => t.CompanyId == (Guid)firstCompanyId)
-                        .Include(t => t.Items)
-                        .OrderByDescending(t => t.Date)
-                        .Select(t => new
+                // Get transactions efficiently - for all companies but limit to recent ones to avoid data explosion
+                var transactions = await _context.Transactions
+                    .Where(t => companyIds.Contains(t.CompanyId))
+                    .Include(t => t.Items)
+                    .OrderByDescending(t => t.Date)
+                    .Take(500) // Limit to avoid data explosion, frontend can load more if needed
+                    .Select(t => new
+                    {
+                        t.Id,
+                        t.Type,
+                        t.TotalAmount,
+                        t.TotalTax,
+                        t.CgstTotal,
+                        t.SgstTotal,
+                        t.RoundOff,
+                        t.Date,
+                        t.EntityName,
+                        t.EntityGstNumber,
+                        t.InvoiceNumber,
+                        t.CompanyId,
+                        Items = t.Items.Select(i => new
                         {
-                            t.Id,
-                            t.Type,
-                            t.TotalAmount,
-                            t.TotalTax,
-                            t.CgstTotal,
-                            t.SgstTotal,
-                            t.RoundOff,
-                            t.Date,
-                            t.EntityName,
-                            t.EntityGstNumber,
-                            t.InvoiceNumber,
-                            t.CompanyId,
-                            Items = t.Items.Select(i => new
-                            {
-                                i.Id,
-                                i.ProductId,
-                                i.ProductName,
-                                i.HsnCode,
-                                i.Quantity,
-                                i.UnitPrice,
-                                i.TaxRate,
-                                i.TaxAmount,
-                                i.TotalAmount,
-                                i.CgstRate,
-                                i.SgstRate,
-                                i.CgstAmount,
-                                i.SgstAmount
-                            }).ToList()
-                        })
-                        .ToListAsync();
-                }
+                            i.Id,
+                            i.ProductId,
+                            i.ProductName,
+                            i.HsnCode,
+                            i.Quantity,
+                            i.UnitPrice,
+                            i.TaxRate,
+                            i.TaxAmount,
+                            i.TotalAmount,
+                            i.CgstRate,
+                            i.SgstRate,
+                            i.CgstAmount,
+                            i.SgstAmount
+                        }).ToList()
+                    })
+                    .ToListAsync();
+
+                var firstCompanyId = companies.FirstOrDefault()?.Id ?? Guid.Empty;
 
                 return Ok(new
                 {

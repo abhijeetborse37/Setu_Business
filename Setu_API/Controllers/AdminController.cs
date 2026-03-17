@@ -42,9 +42,9 @@ namespace Setu.Api.Controllers
         [HttpGet("users")]
         public async Task<IActionResult> GetAllUsers()
         {
+            // OPTIMIZATION: Use single query with projections instead of multiple includes
             var users = await _context.Users
-                .Include(u => u.Subscription)
-                .ThenInclude(s => s!.Plan)
+                .Where(u => u.Role == UserRole.Customer)
                 .Select(u => new
                 {
                     u.Id,
@@ -58,10 +58,10 @@ namespace Setu.Api.Controllers
                     Subscription = u.Subscription != null ? new
                     {
                         u.Subscription.Id,
-                        PlanName = u.Subscription.Plan!.Name,
                         u.Subscription.Status,
                         u.Subscription.StartDate,
                         u.Subscription.EndDate,
+                        PlanName = u.Subscription.Plan!.Name,
                         IsActive = u.Subscription.Status == "Active" && u.Subscription.EndDate > DateTime.UtcNow
                     } : null
                 })
