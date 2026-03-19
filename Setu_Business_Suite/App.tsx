@@ -88,6 +88,20 @@ const App: React.FC = () => {
     fetchData();
   }, [currentUser, activeCompanyId]);
 
+  // Refresh data when switching tabs (but not on initial load)
+  const [hasInitialLoad, setHasInitialLoad] = useState(false);
+  useEffect(() => {
+    if (hasInitialLoad && currentUser) {
+      fetchData();
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (currentUser && !hasInitialLoad) {
+      setHasInitialLoad(true);
+    }
+  }, [currentUser]);
+
   // Session handling
   useEffect(() => {
     const savedUser = localStorage.getItem('setu_user');

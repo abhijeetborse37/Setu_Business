@@ -71,6 +71,10 @@ const UserManager: React.FC<Props> = ({ currentUser }) => {
       setSuccessResult(res.data.user);
       setFormData({ name: '', email: '', password: '', contactNo: '', role: 'Customer' });
       fetchUsers();
+      // Open tab access editor for the newly created user
+      setTimeout(() => {
+        openTabEditor(res.data.user);
+      }, 100);
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Failed to create user.');
     } finally {
