@@ -141,7 +141,7 @@ const AdminPanel: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => { fetchData(); }, [activeSubTab]);
 
   const handleApprove = async (id: string) => {
     if (!window.confirm('Approve this subscription request?')) return;
@@ -343,6 +343,7 @@ const AdminPanel: React.FC = () => {
         await adminService.updatePlan(editingPlanId, payload);
       } else {
         await adminService.createPlan(payload);
+        setActiveSubTab('plans'); // Switch to plans tab after creating
       }
       
       setShowPlanForm(false);
