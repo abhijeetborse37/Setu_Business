@@ -23,12 +23,24 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Setu API", Version = "v1" });
-    
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "Setu Business Suite API",
+        Version = "v1",
+        Description = "API for Setu Business Suite - ERP and Business Management System",
+        Contact = new OpenApiContact
+        {
+            Name = "Setu Support",
+            Email = "support@setu.com"
+        }
+    });
+
     // JWT Authentication for Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "JWT Authorization header using the Bearer scheme. Example: \"Bearer {token}\"",
+        Description = @"JWT Authorization header using the Bearer scheme.
+                      Enter 'Bearer' [space] and then your token in the text input below.
+                      Example: 'Bearer 12345abcdef'",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
@@ -49,6 +61,9 @@ builder.Services.AddSwaggerGen(c =>
             Array.Empty<string>()
         }
     });
+
+    // Enable annotations for better documentation
+    // c.EnableAnnotations();
 });
 
 // DbContext setup with resilient connection handling for Railway Postgres
@@ -62,10 +77,19 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 errorCodesToAdd: null);
         }));
 
-//Added Redis Connection Multiplexer
-// builder.Services.AddSingleton<IConnectionMultiplexer>(
-//     ConnectionMultiplexer.Connect(builder.Configuration["REDIS_CONNECTION"])
-// );
+// Add response caching for performance
+builder.Services.AddResponseCaching(options =>
+{
+    options.MaximumBodySize = 1024 * 1024 * 10; // 10MB
+    options.UseCaseSensitivePaths = false;
+});
+
+// Add output caching for frequently accessed endpoints
+builder.Services.AddOutputCache(options =>
+{
+    options.AddBasePolicy(builder => builder.Expire(TimeSpan.FromMinutes(5)));
+    options.AddPolicy("AdminStats", builder => builder.Expire(TimeSpan.FromMinutes(1)));
+});
 
 // Services
 builder.Services.AddScoped<Setu.Api.Services.ISubscriptionService, Setu.Api.Services.SubscriptionService>();
@@ -205,6 +229,11 @@ app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Add response caching middleware
+app.UseResponseCaching();
+
+// Add output caching middleware
+app.UseOutputCache();
 
 app.MapControllers();
 

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Setu.Api.Data;
 using Setu.Api.Models;
 using Setu.Api.Services;
+using Setu.Api.Dtos;
 using System.Security.Claims;
 
 namespace Setu.Api.Controllers
@@ -26,14 +27,33 @@ namespace Setu.Api.Controllers
         private Guid UserId => Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
 
         [HttpGet("{companyId}")]
-        public async Task<ActionResult<IEnumerable<object>>> GetProducts(Guid companyId)
+        public async Task<ActionResult<PaginatedResponse<ProductResponse>>> GetProducts(Guid companyId, [FromQuery] PaginationQuery pagination)
         {
             try
             {
-                // OPTIMIZATION: Fetch products with efficient projection - only needed fields
+                // OPTIMIZATION: Get total count first
+                var totalCount = await _context.Products
+                    .Where(p => p.CompanyId == companyId)
+                    .CountAsync();
+
+                if (totalCount == 0)
+                {
+                    return Ok(new PaginatedResponse<object>(
+                        new List<object>(),
+                        0,
+                        pagination.PageNumber,
+                        pagination.PageSize,
+                        false,
+                        false
+                    ));
+                }
+
+                // OPTIMIZATION: Fetch products with efficient projection and pagination
                 var products = await _context.Products
                     .Where(p => p.CompanyId == companyId)
                     .OrderBy(p => p.Name)
+                    .Skip((pagination.PageNumber - 1) * pagination.PageSize)
+                    .Take(pagination.PageSize)
                     .Select(p => new
                     {
                         p.Id,
@@ -53,34 +73,28 @@ namespace Setu.Api.Controllers
                     })
                     .ToListAsync();
 
-                if (products.Count == 0)
-                {
-                    return Ok(new List<object>());
-                }
-
                 var productIds = products.Select(p => p.Id).ToList();
-                
-                // OPTIMIZATION: Single filtered query - avoid Include, use direct join
+
+                // OPTIMIZATION: Single filtered query for stock calculation
                 var stockItems = await _context.TransactionItems
                     .Where(ti => productIds.Contains(ti.ProductId) && ti.Transaction!.CompanyId == companyId)
                     .GroupBy(ti => new { ti.ProductId, ti.Transaction!.Type })
                     .Select(g => new { g.Key.ProductId, g.Key.Type, Total = g.Sum(x => x.Quantity) })
                     .ToListAsync();
 
-                // OPTIMIZATION: Single pass calculation in memory instead of LINQ-to-SQL
-                var result = products.Select(p => 
+                // OPTIMIZATION: Single pass calculation in memory
+                var result = products.Select(p =>
                 {
                     var tin = stockItems.FirstOrDefault(s => s.ProductId == p.Id && s.Type == "PURCHASE")?.Total ?? 0;
                     var tout = stockItems.FirstOrDefault(s => s.ProductId == p.Id && s.Type == "SALE")?.Total ?? 0;
-                    return new
-                    {
+                    return new ProductResponse(
                         p.Id,
                         p.Name,
                         p.Description,
                         p.Category,
                         p.Price,
                         p.PurchasePrice,
-                        Stock = p.Stock + tin - tout,
+                        p.Stock + tin - tout,
                         p.Supplier,
                         p.Sku,
                         p.Image,
@@ -88,10 +102,19 @@ namespace Setu.Api.Controllers
                         p.UserId,
                         p.HsnCode,
                         p.UnitPerPack
-                    };
+                    );
                 });
 
-                return Ok(result);
+                var paginatedResult = new PaginatedResponse<ProductResponse>(
+                    result.ToList(),
+                    totalCount,
+                    pagination.PageNumber,
+                    pagination.PageSize,
+                    (pagination.PageNumber * pagination.PageSize) < totalCount,
+                    pagination.PageNumber > 1
+                );
+
+                return Ok(paginatedResult);
             }
             catch (Exception ex)
             {
@@ -100,7 +123,7 @@ namespace Setu.Api.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<Product>> CreateProduct(Product product)
+        public async Task<ActionResult<Product>> CreateProduct([FromBody] CreateProductDto dto)
         {
             /*
             if (!await _subscriptionService.HasActiveSubscription(UserId))
@@ -108,15 +131,31 @@ namespace Setu.Api.Controllers
                 return BadRequest("Active subscription required.");
             }
 
-            if (!await _subscriptionService.CanCreateProduct(UserId, product.CompanyId))
+            if (!await _subscriptionService.CanCreateProduct(UserId, dto.CompanyId))
             {
                 return BadRequest("Product limit reached for your plan.");
             }
             */
 
-            product.Id = Guid.NewGuid();
-            product.UserId = UserId;
-            
+            var product = new Product
+            {
+                Id = Guid.NewGuid(),
+                UserId = UserId,
+                CompanyId = dto.CompanyId,
+                Name = dto.Name,
+                Description = dto.Description,
+                Category = dto.Category,
+                Price = dto.Price,
+                PurchasePrice = dto.PurchasePrice,
+                Stock = dto.Stock,
+                Supplier = dto.Supplier,
+                Sku = dto.Sku,
+                Image = dto.Image,
+                UnitPerPack = dto.UnitPerPack,
+                HsnCode = dto.HsnCode,
+                CustomAttributesJson = dto.CustomAttributesJson
+            };
+
             _context.Products.Add(product);
 
             try
@@ -130,13 +169,26 @@ namespace Setu.Api.Controllers
 
             return Ok(product);
         }
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateProduct(Guid id, Product product)
-        {
-            if (id != product.Id) return BadRequest("ID mismatch");
-            if (product.UserId != UserId) return Forbid();
 
-            _context.Entry(product).State = EntityState.Modified;
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateProduct(Guid id, [FromBody] UpdateProductDto dto)
+        {
+            var existingProduct = await _context.Products.FindAsync(id);
+            if (existingProduct == null) return NotFound();
+            if (existingProduct.UserId != UserId) return Forbid();
+
+            existingProduct.Name = dto.Name;
+            existingProduct.Description = dto.Description;
+            existingProduct.Category = dto.Category;
+            existingProduct.Price = dto.Price;
+            existingProduct.PurchasePrice = dto.PurchasePrice;
+            existingProduct.Stock = dto.Stock;
+            existingProduct.Supplier = dto.Supplier;
+            existingProduct.Sku = dto.Sku;
+            existingProduct.Image = dto.Image;
+            existingProduct.UnitPerPack = dto.UnitPerPack;
+            existingProduct.HsnCode = dto.HsnCode;
+            existingProduct.CustomAttributesJson = dto.CustomAttributesJson;
 
             try
             {
@@ -144,8 +196,7 @@ namespace Setu.Api.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!ProductExists(id)) return NotFound();
-                else throw;
+                return StatusCode(409, "Product was modified by another user. Please refresh and try again.");
             }
 
             return NoContent();

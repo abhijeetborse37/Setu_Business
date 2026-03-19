@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Setu.Api.Data;
 using Setu.Api.Models;
 using Setu.Api.Services;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace Setu.Api.Controllers
 {
@@ -23,6 +24,7 @@ namespace Setu.Api.Controllers
         }
 
         [HttpGet("stats")]
+        [OutputCache(PolicyName = "AdminStats")]
         public async Task<IActionResult> GetStats()
         {
             var totalUsers = await _context.Users.CountAsync(u => u.Role == UserRole.Customer);

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Setu.Api.Data;
 using Setu.Api.Models;
-using Setu.Api.Services;
+using Setu.Api.Dtos;
 using System.Security.Claims;
 
 namespace Setu.Api.Controllers
@@ -23,27 +23,50 @@ namespace Setu.Api.Controllers
 
         private Guid UserId => Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Customer>>> GetCustomers()
+        [HttpGet("{companyId}")]
+        public async Task<ActionResult<PaginatedResponse<Customer>>> GetCustomers(Guid companyId, [FromQuery] PaginationQuery pagination)
         {
-            return await _context.Customers
-                .Where(c => c.UserId == UserId)
+            var totalCount = await _context.Customers
+                .Where(c => c.UserId == UserId && c.CompanyId == companyId)
+                .CountAsync();
+
+            var customers = await _context.Customers
+                .Where(c => c.UserId == UserId && c.CompanyId == companyId)
+                .OrderBy(c => c.Name)
+                .Skip((pagination.PageNumber - 1) * pagination.PageSize)
+                .Take(pagination.PageSize)
                 .ToListAsync();
+
+            var paginatedResult = new PaginatedResponse<Customer>(
+                customers,
+                totalCount,
+                pagination.PageNumber,
+                pagination.PageSize,
+                (pagination.PageNumber * pagination.PageSize) < totalCount,
+                pagination.PageNumber > 1
+            );
+
+            return Ok(paginatedResult);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Customer>> CreateCustomer(Customer customer)
+        public async Task<ActionResult<Customer>> CreateCustomer([FromBody] CreateCustomerDto dto)
         {
-            try 
+            try
             {
-                customer.Id = Guid.NewGuid();
-                customer.UserId = UserId;
-                
-                // If companyId is empty guid, it might be because frontend didn't send it or sent null/empty string
-                if (customer.CompanyId == Guid.Empty)
+                var customer = new Customer
                 {
-                    return BadRequest("A valid Company Selection is required to register a customer.");
-                }
+                    Id = Guid.NewGuid(),
+                    UserId = UserId,
+                    CompanyId = dto.CompanyId,
+                    Name = dto.Name,
+                    Email = dto.Email,
+                    Phone = dto.Phone,
+                    Address = dto.Address,
+                    GstPanId = dto.GstPanId,
+                    LicenseNo = dto.LicenseNo,
+                    Group = dto.Group
+                };
 
                 _context.Customers.Add(customer);
                 await _context.SaveChangesAsync();
@@ -57,16 +80,22 @@ namespace Setu.Api.Controllers
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateCustomer(Guid id, Customer customer)
+        public async Task<IActionResult> UpdateCustomer(Guid id, [FromBody] UpdateCustomerDto dto)
         {
-            try 
+            try
             {
-                if (id != customer.Id) return BadRequest("Customer ID mismatch.");
-                
-                // Ensure UserId is set correctly for the check
-                customer.UserId = UserId;
+                var existingCustomer = await _context.Customers.FindAsync(id);
+                if (existingCustomer == null) return NotFound();
+                if (existingCustomer.UserId != UserId) return Forbid();
 
-                _context.Entry(customer).State = EntityState.Modified;
+                existingCustomer.Name = dto.Name;
+                existingCustomer.Email = dto.Email;
+                existingCustomer.Phone = dto.Phone;
+                existingCustomer.Address = dto.Address;
+                existingCustomer.GstPanId = dto.GstPanId;
+                existingCustomer.LicenseNo = dto.LicenseNo;
+                existingCustomer.Group = dto.Group;
+
                 await _context.SaveChangesAsync();
                 return NoContent();
             }
