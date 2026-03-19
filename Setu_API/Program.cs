@@ -77,6 +77,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 errorCodesToAdd: null);
         }));
 
+//Added Redis Connection Multiplexer
+var redisConnection = builder.Configuration["REDIS_CONNECTION"];
+if (!string.IsNullOrEmpty(redisConnection))
+{
+    builder.Services.AddSingleton<IConnectionMultiplexer>(
+        ConnectionMultiplexer.Connect(redisConnection)
+    );
+    builder.Services.AddScoped<RedisService>();
+}
+
 // Add response caching for performance
 builder.Services.AddResponseCaching(options =>
 {
@@ -125,8 +135,6 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
-
-
 
 var app = builder.Build();
 
