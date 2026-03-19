@@ -23,22 +23,55 @@ namespace Setu.Api.Controllers
             _subscriptionService = subscriptionService;
         }
 
+        [HttpGet("health")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HealthCheck()
+        {
+            try
+            {
+                // Test database connection
+                var userCount = await _context.Users.CountAsync();
+                return Ok(new { status = "healthy", userCount });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { status = "unhealthy", error = ex.Message });
+            }
+        }
+
         [HttpGet("stats")]
         [OutputCache(PolicyName = "AdminStats")]
         public async Task<IActionResult> GetStats()
         {
-            var totalUsers = await _context.Users.CountAsync(u => u.Role == UserRole.Customer);
-            var activeSubs = await _context.Subscriptions.CountAsync(s => s.Status == "Active" && s.EndDate > DateTime.UtcNow);
-            var expiredSubs = await _context.Subscriptions.CountAsync(s => s.Status == "Expired" || (s.Status == "Active" && s.EndDate <= DateTime.UtcNow));
-            var pendingSubs = await _context.Subscriptions.CountAsync(s => s.Status == "Pending");
-
-            return Ok(new
+            try
             {
-                TotalUsers = totalUsers,
-                ActiveSubscriptions = activeSubs,
-                ExpiredSubscriptions = expiredSubs,
-                PendingSubscriptionRequests = pendingSubs
-            });
+                var totalUsers = await _context.Users.CountAsync(u => u.Role == UserRole.Customer);
+                var activeSubs = await _context.Subscriptions.CountAsync(s => s.Status == "Active" && s.EndDate > DateTime.UtcNow);
+                var expiredSubs = await _context.Subscriptions.CountAsync(s => s.Status == "Expired" || (s.Status == "Active" && s.EndDate <= DateTime.UtcNow));
+                var pendingSubs = await _context.Subscriptions.CountAsync(s => s.Status == "Pending");
+
+                var result = new
+                {
+                    TotalUsers = totalUsers,
+                    ActiveSubscriptions = activeSubs,
+                    ExpiredSubscriptions = expiredSubs,
+                    PendingSubscriptionRequests = pendingSubs
+                };
+
+                return Ok(result);
+            }
+            catch (Exception)
+            {
+                // Return fallback data if database query fails
+                return Ok(new
+                {
+                    TotalUsers = 0,
+                    ActiveSubscriptions = 0,
+                    ExpiredSubscriptions = 0,
+                    PendingSubscriptionRequests = 0,
+                    Error = "Unable to load statistics"
+                });
+            }
         }
 
         [HttpGet("users")]
@@ -217,53 +250,109 @@ namespace Setu.Api.Controllers
         }
 
         [HttpPost("companies/register")]
-        public async Task<IActionResult> RegisterCompanyForUser([FromBody] RegisterCompanyDto dto)
+        public async Task<IActionResult> RegisterCompanyForUser([FromBody] RegisterCompanyDto? dto)
         {
+            // Validate input
+            if (dto == null)
+                return BadRequest(new { status = "error", message = "Company data is required.", code = "INVALID_REQUEST" });
+
+            // Validate required fields
+            var validationErrors = new List<string>();
+            
+            if (string.IsNullOrWhiteSpace(dto.Name))
+                validationErrors.Add("Company name is required.");
+            
+            if (string.IsNullOrWhiteSpace(dto.Address))
+                validationErrors.Add("Company address is required.");
+            
+            if (dto.UserId == Guid.Empty)
+                validationErrors.Add("Valid user ID is required.");
+
+            if (validationErrors.Any())
+                return BadRequest(new { status = "error", message = "Validation failed", errors = validationErrors, code = "VALIDATION_ERROR" });
+
             // Verify the user exists
             var user = await _context.Users.FindAsync(dto.UserId);
-            if (user == null) return NotFound(new { message = "User not found." });
+            if (user == null)
+                return NotFound(new { status = "error", message = "User not found.", code = "USER_NOT_FOUND" });
 
-            // Create the company
-            var company = new Company
+            // Use a transaction to ensure data consistency
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                Id = Guid.NewGuid(),
-                UserId = dto.UserId,
-                Name = dto.Name,
-                Address = dto.Address,
-                Country = dto.Country,
-                Currency = dto.Currency,
-                CurrencySymbol = dto.CurrencySymbol,
-                Contact = dto.Contact,
-                Type = dto.Type,
-                TaxId = dto.TaxId,
-                GstNumber = dto.GstNumber,
-                LicenseNumber = dto.LicenseNumber,
-                BankAccount = dto.BankAccount,
-                BankName = dto.BankName,
-                IfscCode = dto.IfscCode,
-                BranchName = dto.BranchName,
-                Industry = dto.Industry,
-                Employees = dto.Employees,
-                Revenue = dto.Revenue,
-                Expenses = dto.Expenses,
-                IncorporationDate = DateTime.SpecifyKind(dto.IncorporationDate, DateTimeKind.Utc),
-                Website = dto.Website
-            };
+                // Check if company already exists for this user
+                var existingCompany = await _context.Companies
+                    .FirstOrDefaultAsync(c => c.UserId == dto.UserId && c.Name.ToLower() == dto.Name.ToLower().Trim());
+                
+                if (existingCompany != null)
+                    return BadRequest(new { status = "error", message = "A company with this name already exists for this user.", code = "DUPLICATE_COMPANY" });
 
-            _context.Companies.Add(company);
-            await _context.SaveChangesAsync();
-
-            return Ok(new
-            {
-                message = $"Business registered successfully for {user.Name}",
-                company = new
+                // Create the company with proper date handling
+                var company = new Company
                 {
-                    company.Id,
-                    company.Name,
-                    company.Country,
-                    Owner = user.Name
-                }
-            });
+                    Id = Guid.NewGuid(),
+                    UserId = dto.UserId,
+                    Name = dto.Name.Trim(),
+                    Address = dto.Address.Trim(),
+                    Country = (dto.Country ?? "India").Trim(),
+                    Currency = (dto.Currency ?? "INR").Trim(),
+                    CurrencySymbol = (dto.CurrencySymbol ?? "₹").Trim(),
+                    Contact = (dto.Contact ?? "").Trim(),
+                    Type = dto.Type ?? BusinessType.Proprietorship,
+                    TaxId = (dto.TaxId ?? "").Trim(),
+                    GstNumber = dto.GstNumber?.Trim(),
+                    LicenseNumber = (dto.LicenseNumber ?? "").Trim(),
+                    BankAccount = (dto.BankAccount ?? "").Trim(),
+                    BankName = dto.BankName?.Trim(),
+                    IfscCode = dto.IfscCode?.Trim(),
+                    BranchName = dto.BranchName?.Trim(),
+                    Industry = (dto.Industry ?? "").Trim(),
+                    Employees = dto.Employees > 0 ? dto.Employees : 0,
+                    Revenue = dto.Revenue > 0 ? dto.Revenue : 0,
+                    Expenses = dto.Expenses > 0 ? dto.Expenses : 0,
+                    // Handle date properly - ensure it's in UTC
+                    IncorporationDate = dto.IncorporationDate.HasValue
+                        ? (dto.IncorporationDate.Value.Kind == DateTimeKind.Unspecified
+                            ? DateTime.SpecifyKind(dto.IncorporationDate.Value, DateTimeKind.Utc)
+                            : dto.IncorporationDate.Value.ToUniversalTime())
+                        : DateTime.UtcNow,
+                    Website = dto.Website?.Trim()
+                };
+
+                _context.Companies.Add(company);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                // Return 201 Created with Location header for proper redirection
+                return CreatedAtAction(nameof(CompaniesController.GetCompanies), 
+                    new { companyId = company.Id },
+                    new
+                    {
+                        status = "success",
+                        message = $"Business registered successfully for {user.Name}",
+                        data = new
+                        {
+                            company.Id,
+                            company.Name,
+                            company.Country,
+                            Owner = user.Name,
+                            company.Address,
+                            company.GstNumber,
+                            company.TaxId
+                        },
+                        code = "COMPANY_CREATED"
+                    });
+            }
+            catch (DbUpdateException dbEx)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { status = "error", message = "Database error while registering company. Please try again.", code = "DB_ERROR" });
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                return StatusCode(500, new { status = "error", message = "An unexpected error occurred while registering company. Please try again.", code = "SERVER_ERROR" });
+            }
         }
     }
 
@@ -274,23 +363,23 @@ namespace Setu.Api.Controllers
         Guid UserId,
         string Name,
         string Address,
-        string Country,
-        string Currency,
-        string CurrencySymbol,
-        string Contact,
-        BusinessType Type,
-        string TaxId,
-        string? GstNumber,
-        string LicenseNumber,
-        string BankAccount,
-        string? BankName,
-        string? IfscCode,
-        string? BranchName,
-        string Industry,
-        int Employees,
-        decimal Revenue,
-        decimal Expenses,
-        DateTime IncorporationDate,
-        string? Website
+        string? Country = null,
+        string? Currency = null,
+        string? CurrencySymbol = null,
+        string? Contact = null,
+        BusinessType? Type = null,
+        string? TaxId = null,
+        string? GstNumber = null,
+        string? LicenseNumber = null,
+        string? BankAccount = null,
+        string? BankName = null,
+        string? IfscCode = null,
+        string? BranchName = null,
+        string? Industry = null,
+        int Employees = 0,
+        decimal Revenue = 0,
+        decimal Expenses = 0,
+        DateTime? IncorporationDate = null,
+        string? Website = null
     );
 }
