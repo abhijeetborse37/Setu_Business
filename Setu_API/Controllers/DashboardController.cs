@@ -28,6 +28,7 @@ namespace Setu.Api.Controllers
         /// This replaces 4 separate API calls with a single optimized call
         /// </summary>
         [HttpGet("init")]
+        [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)] // Cache for 5 minutes
         public async Task<IActionResult> GetDashboardInit()
         {
             try

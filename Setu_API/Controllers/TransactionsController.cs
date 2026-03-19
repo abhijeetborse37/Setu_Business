@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Setu.Api.Data;
 using Setu.Api.Models;
+using Setu.Api.Dtos;
 using System.Security.Claims;
 
 namespace Setu.Api.Controllers
@@ -23,14 +24,20 @@ namespace Setu.Api.Controllers
         private Guid UserId => Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value!);
 
         [HttpGet("{companyId}")]
-        public async Task<ActionResult<IEnumerable<object>>> GetTransactions(Guid companyId)
+        public async Task<ActionResult<PaginatedResponse<TransactionResponse>>> GetTransactions(Guid companyId, [FromQuery] PaginationQuery pagination)
         {
-            // OPTIMIZATION: Use projections instead of loading all entities into memory
+            // OPTIMIZATION: Get total count first
+            var totalCount = await _context.Transactions
+                .Where(t => t.CompanyId == companyId)
+                .CountAsync();
+
+            // OPTIMIZATION: Use projections with pagination instead of loading all entities
             var transactions = await _context.Transactions
                 .Where(t => t.CompanyId == companyId)
                 .OrderByDescending(t => t.Date)
-                .Select(t => new
-                {
+                .Skip((pagination.PageNumber - 1) * pagination.PageSize)
+                .Take(pagination.PageSize)
+                .Select(t => new TransactionResponse(
                     t.Id,
                     t.Type,
                     t.TotalAmount,
@@ -43,8 +50,7 @@ namespace Setu.Api.Controllers
                     t.EntityGstNumber,
                     t.InvoiceNumber,
                     t.CompanyId,
-                    Items = t.Items.Select(i => new
-                    {
+                    t.Items.Select(i => new TransactionItemResponse(
                         i.Id,
                         i.ProductId,
                         i.ProductName,
@@ -58,40 +64,69 @@ namespace Setu.Api.Controllers
                         i.SgstRate,
                         i.CgstAmount,
                         i.SgstAmount
-                    }).ToList()
-                })
+                    )).ToList()
+                ))
                 .ToListAsync();
 
-            return Ok(transactions);
+            var paginatedResult = new PaginatedResponse<TransactionResponse>(
+                transactions,
+                totalCount,
+                pagination.PageNumber,
+                pagination.PageSize,
+                (pagination.PageNumber * pagination.PageSize) < totalCount,
+                pagination.PageNumber > 1
+            );
+
+            return Ok(paginatedResult);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Transaction>> CreateTransaction(Transaction transaction)
+        public async Task<ActionResult<Transaction>> CreateTransaction([FromBody] CreateTransactionDto dto)
         {
-            transaction.Id = Guid.NewGuid();
-            transaction.UserId = UserId;
-            transaction.Date = DateTime.SpecifyKind(transaction.Date, DateTimeKind.Utc);
-            transaction.InvoiceNumber = "TXN-" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
-
             // OPTIMIZATION: Batch fetch all products needed instead of fetching one by one
-            var productIds = transaction.Items.Select(i => i.ProductId).Distinct().ToList();
+            var productIds = dto.Items.Select(i => i.ProductId).Distinct().ToList();
             var products = await _context.Products
                 .Where(p => productIds.Contains(p.Id))
                 .ToDictionaryAsync(p => p.Id);
 
+            var transaction = new Transaction
+            {
+                Id = Guid.NewGuid(),
+                UserId = UserId,
+                CompanyId = dto.CompanyId,
+                Type = dto.Type,
+                TotalAmount = dto.TotalAmount,
+                TotalTax = dto.TotalTax,
+                CgstTotal = dto.CgstTotal,
+                SgstTotal = dto.SgstTotal,
+                RoundOff = dto.RoundOff,
+                Date = DateTime.SpecifyKind(dto.Date, DateTimeKind.Utc),
+                EntityName = dto.EntityName,
+                EntityGstNumber = dto.EntityGstNumber,
+                InvoiceNumber = dto.InvoiceNumber ?? "TXN-" + Guid.NewGuid().ToString().Substring(0, 8).ToUpper(),
+                Items = dto.Items.Select(item => new TransactionItem
+                {
+                    Id = Guid.NewGuid(),
+                    TransactionId = Guid.Empty, // Will be set after transaction is created
+                    ProductId = item.ProductId,
+                    ProductName = string.IsNullOrEmpty(item.ProductName) && products.TryGetValue(item.ProductId, out var product) ? product.Name : item.ProductName,
+                    HsnCode = string.IsNullOrEmpty(item.HsnCode) && products.TryGetValue(item.ProductId, out var prod) ? prod.HsnCode : item.HsnCode,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice,
+                    TaxRate = item.TaxRate,
+                    TaxAmount = item.TaxAmount,
+                    TotalAmount = item.TotalAmount,
+                    CgstRate = item.CgstRate,
+                    SgstRate = item.SgstRate,
+                    CgstAmount = item.CgstAmount,
+                    SgstAmount = item.SgstAmount
+                }).ToList()
+            };
+
+            // Set TransactionId for items
             foreach (var item in transaction.Items)
             {
-                item.Id = Guid.NewGuid();
                 item.TransactionId = transaction.Id;
-                
-                // Fetch product name and HSN Code if missing - using pre-loaded products
-                if (products.TryGetValue(item.ProductId, out var product))
-                {
-                    if (string.IsNullOrEmpty(item.ProductName))
-                        item.ProductName = product.Name;
-                    if (string.IsNullOrEmpty(item.HsnCode))
-                        item.HsnCode = product.HsnCode;
-                }
             }
 
             try
